@@ -1,0 +1,19 @@
+[project]
+name = "quantitative"
+version = "0.1.0"
+description = "Quant research lab for trading and portfolio optimization."
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "quantstats>=0.0.62",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
