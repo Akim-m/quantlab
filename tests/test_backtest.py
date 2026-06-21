@@ -52,3 +52,20 @@ def test_backtest_counts_rebalance_turnover_from_drift() -> None:
 
     assert res.returns.tolist() == pytest.approx([0.0, 0.05])
     assert res.turnover.tolist() == pytest.approx([1.0, 0.0476190476])
+
+
+def test_backtest_does_not_rebalance_on_missing_target_rows() -> None:
+    prices = pd.DataFrame(
+        {"AAA": [100.0, 110.0], "BBB": [100.0, 100.0]},
+        index=pd.date_range("2024-01-01", periods=2),
+    )
+    weights = pd.DataFrame(
+        {"AAA": [0.5, None], "BBB": [0.5, None]},
+        index=prices.index,
+    )
+
+    res = backtest_weights(prices, weights)
+
+    assert res.returns.tolist() == pytest.approx([0.0, 0.05])
+    assert res.turnover.tolist() == pytest.approx([1.0, 0.0])
+    assert res.weights.iloc[-1].tolist() == pytest.approx([0.5238095238, 0.4761904762])

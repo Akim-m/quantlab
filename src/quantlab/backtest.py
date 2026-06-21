@@ -34,34 +34,44 @@ def backtest_weights(
     if prices.empty:
         raise ValueError("prices is empty")
 
-    weights = weights.reindex(prices.index).ffill().fillna(0.0)
-    weights = weights.reindex(columns=prices.columns, fill_value=0.0)
+    targets = weights.reindex(prices.index)
+    targets = targets.reindex(columns=prices.columns)
+    rebalance = targets.notna().any(axis=1)
+    targets = targets.fillna(0.0)
 
     asset_returns = prices.pct_change().fillna(0.0)
     prev = pd.Series(0.0, index=prices.columns)
     returns = []
     turnover = []
+    actual_weights = []
 
     for date, row in asset_returns.iterrows():
-        target = weights.loc[date]
         gross = float((prev * row).sum())
         capital = 1.0 + gross
         if capital <= 0:
             raise ValueError("portfolio capital fell to zero")
 
         drifted = prev * (1.0 + row) / capital
-        traded = float((target - drifted).abs().sum())
+        if rebalance.loc[date]:
+            target = targets.loc[date]
+            traded = float((target - drifted).abs().sum())
+            prev = target
+        else:
+            traded = 0.0
+            prev = drifted
+
         returns.append(gross - traded * cost_bps / 10_000)
         turnover.append(traded)
-        prev = target
+        actual_weights.append(prev)
 
     strategy_returns = pd.Series(returns, index=prices.index)
     turnover = pd.Series(turnover, index=prices.index)
+    actual = pd.DataFrame(actual_weights, index=prices.index, columns=prices.columns)
     equity = (1.0 + strategy_returns).cumprod()
 
     return BacktestResult(
         returns=strategy_returns,
         equity=equity,
-        weights=weights,
+        weights=actual,
         turnover=turnover,
     )

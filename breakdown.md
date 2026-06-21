@@ -949,3 +949,733 @@ How does it behave versus SPY?
 ```
 
 That is closer to real investment research.
+
+## Stage 4: Rolling MVO Portfolio Optimization
+
+In this stage we added two real portfolio optimization strategies:
+
+```text
+mvo_min_variance
+mvo_max_sharpe
+```
+
+These are different from the earlier rules.
+
+Earlier strategies used simple allocation logic:
+
+```text
+equal weight       -> split evenly
+inverse volatility -> give less weight to volatile assets
+momentum top 2     -> hold the strongest recent performers
+```
+
+MVO solves an optimization problem.
+
+### What MVO Means
+
+MVO means Mean-Variance Optimization.
+
+It chooses portfolio weights using:
+
+```text
+mean     = expected return estimate
+variance = risk estimate
+covariance = how assets move together
+```
+
+The important part is covariance.
+
+Example:
+
+Two assets can both be risky individually, but if they move differently, combining them can reduce total portfolio risk.
+
+So MVO asks:
+
+```text
+What mix of assets gives the best portfolio behavior?
+```
+
+Not just:
+
+```text
+Which asset is best on its own?
+```
+
+### Future Performance
+
+MVO does not know the future.
+
+It estimates inputs from the past.
+
+For each rebalance date, we use only the previous 252 trading days:
+
+```text
+past 252 daily returns -> estimate mean and covariance -> optimize weights
+```
+
+Then we hold those weights going forward until the next rebalance.
+
+So the strategy is making a bet that recent risk and return estimates are useful for the near future.
+
+That assumption can fail.
+
+This is why MVO is useful, but also dangerous if used blindly.
+
+### The Two MVO Strategies
+
+`mvo_min_variance`
+
+This strategy ignores expected returns and only minimizes portfolio risk.
+
+Objective:
+
+```text
+minimize portfolio variance
+```
+
+Formula:
+
+```text
+portfolio variance = w.T @ covariance @ w
+```
+
+Where:
+
+```text
+w = portfolio weights
+```
+
+This strategy asks:
+
+```text
+What fully invested long-only portfolio has the lowest estimated volatility?
+```
+
+`mvo_max_sharpe`
+
+This strategy uses both estimated returns and estimated covariance.
+
+Objective:
+
+```text
+maximize Sharpe ratio
+```
+
+Formula:
+
+```text
+portfolio return = w.T @ mu
+portfolio volatility = sqrt(w.T @ covariance @ w)
+Sharpe = portfolio return / portfolio volatility
+```
+
+Since the optimizer minimizes functions, the code minimizes negative Sharpe:
+
+```text
+minimize -Sharpe
+```
+
+That is equivalent to maximizing Sharpe.
+
+### Constraints
+
+Both MVO strategies use simple constraints:
+
+```text
+weights sum to 1
+weights >= 0
+weights <= 60%
+```
+
+This means:
+
+```text
+fully invested
+long-only
+no shorting
+no leverage
+no asset can exceed 60%
+```
+
+The 60% cap matters because MVO can otherwise concentrate too aggressively in one asset.
+
+Example:
+
+```text
+SPY: 0%
+QQQ: 0%
+IWM: 0%
+TLT: 0%
+GLD: 100%
+```
+
+That may be mathematically optimal in a trailing window, but it is fragile.
+
+The cap forces some diversification.
+
+### Rolling Optimization
+
+The main function is in `src/quantlab/optimization.py`:
+
+```python
+rolling_mvo_weights(
+    prices,
+    objective,
+    lookback=252,
+    max_weight=0.6,
+    rebalance="ME",
+)
+```
+
+The defaults mean:
+
+```text
+lookback = 252 trading days, about one year
+max_weight = 60%
+rebalance = month end
+```
+
+The process:
+
+```text
+1. Convert prices to daily returns.
+2. Find month-end rebalance dates.
+3. For each rebalance date:
+   - take the previous 252 returns
+   - estimate annualized mean returns
+   - estimate annualized covariance
+   - solve the optimizer
+   - write target weights for that date
+4. Forward-fill those weights until the next rebalance.
+5. Send the full daily weight table into the backtester.
+```
+
+Forward-filling is important.
+
+If we rebalance monthly, we do not want weights only on month-end dates.
+
+We want:
+
+```text
+choose weights at month end
+hold those weights every day until the next month end
+```
+
+### Code Structure
+
+`min_variance_weights(cov, max_weight=0.6)`
+
+Takes a covariance matrix and returns optimized weights.
+
+It does not need expected returns.
+
+`max_sharpe_weights(mu, cov, max_weight=0.6)`
+
+Takes expected returns and covariance, then returns optimized weights.
+
+If all expected returns are negative, the code falls back to minimum variance.
+
+Reason:
+
+```text
+When every estimated return is negative, max-Sharpe becomes unstable and less meaningful.
+```
+
+In that case, it is more conservative to focus on minimizing risk.
+
+`_solve(...)`
+
+This is the shared optimizer wrapper around SciPy's SLSQP solver.
+
+SLSQP handles:
+
+```text
+bounds
+constraints
+nonlinear objectives
+```
+
+That is why we use it here.
+
+### Bugs We Caught
+
+First issue:
+
+```text
+max-Sharpe failed in some rolling windows
+```
+
+Why?
+
+The return/covariance estimates can be noisy, and the optimizer can struggle with the objective surface.
+
+Fix:
+
+```text
+use sensible starting points
+fall back to min-variance when all estimated returns are negative
+```
+
+Second issue:
+
+```text
+MVO weights were not being held between rebalance dates
+```
+
+The weight table had zeros on non-rebalance days, so forward-fill did not work.
+
+That accidentally made the strategy sit in cash between rebalances.
+
+Fix:
+
+```text
+initialize non-rebalance rows as NaN
+write weights only on rebalance dates
+forward-fill
+fill initial missing values with 0
+```
+
+This means the strategy now correctly holds its portfolio between rebalance dates.
+
+We added a test for this so it does not regress.
+
+### Stage 4 Results
+
+We reran:
+
+```text
+python -m quantlab.experiments --report-dir reports/etf_baseline
+```
+
+Result:
+
+```text
+strategy            total_return  annual_return  sharpe  max_drawdown  avg_daily_turnover
+equal_weight        8.2527        0.1093         0.8762  -0.3164       0.0066
+inverse_vol_63d     8.3604        0.1099         1.0141  -0.2407       0.0119
+momentum_126d_top2  4.4441        0.0822         0.6057  -0.2871       0.1214
+mvo_min_variance    5.2144        0.0889         1.0047  -0.2346       0.0087
+mvo_max_sharpe      7.5596        0.1053         0.8924  -0.2603       0.0200
+```
+
+### Interpretation
+
+`mvo_min_variance`
+
+This had lower return than equal weight, but much lower drawdown:
+
+```text
+equal_weight max drawdown     = -31.64%
+mvo_min_variance max drawdown = -23.46%
+```
+
+It also had a Sharpe close to inverse volatility.
+
+That makes sense. Minimum variance is a risk-control strategy, not a return-maximization strategy.
+
+`mvo_max_sharpe`
+
+This had return closer to equal weight, but did not beat inverse volatility.
+
+That also makes sense.
+
+Max-Sharpe MVO relies on expected return estimates, and expected returns are hard to estimate from one-year historical averages.
+
+Covariance is usually easier to estimate than expected return.
+
+This is one of the central lessons of portfolio optimization.
+
+### Reports
+
+The QuantStats reports now include:
+
+```text
+reports/etf_baseline/mvo_min_variance.html
+reports/etf_baseline/mvo_max_sharpe.html
+```
+
+Use those to inspect:
+
+- cumulative return
+- drawdowns
+- underwater periods
+- rolling behavior
+- comparison against SPY
+
+### What This Stage Gives Us
+
+We now have both:
+
+```text
+simple allocation baselines
+```
+
+and:
+
+```text
+real optimization baselines
+```
+
+That matters because if we later build ML or RL allocation, it must beat serious baselines like:
+
+```text
+inverse volatility
+minimum variance
+max Sharpe MVO
+```
+
+Otherwise the model is just complexity without value.
+
+## Stage 5: Better Report Benchmarks
+
+In this stage we changed how reports compare strategies.
+
+Previously every QuantStats report compared the strategy only against SPY.
+
+That was useful, but incomplete.
+
+For our ETF universe, a more practical benchmark stack is:
+
+```text
+equal-weight portfolio of all components
+S&P 500 proxy through SPY
+```
+
+### Equal-Weight Benchmark
+
+The equal-weight benchmark means:
+
+```text
+SPY: 20%
+QQQ: 20%
+IWM: 20%
+TLT: 20%
+GLD: 20%
+```
+
+This is the fairest first comparison for allocation strategies.
+
+Why?
+
+Because our strategies are all choosing weights inside the same 5-ETF universe.
+
+So a natural question is:
+
+```text
+Did the smart weighting method beat just splitting money equally?
+```
+
+If a strategy cannot beat equal weight or reduce risk meaningfully, it probably is not worth the added complexity.
+
+### S&P 500 Benchmark
+
+SPY remains useful because it answers a different question:
+
+```text
+Was this diversified strategy better than simply owning the S&P 500?
+```
+
+This is important because many diversified strategies look sophisticated but fail to beat a simple equity benchmark.
+
+But SPY is not always the fairest benchmark for a multi-asset ETF allocation strategy. That is why we now generate both.
+
+### New Report Layout
+
+Reports are now generated in benchmark-specific folders:
+
+```text
+reports/etf_baseline/vs_equal_weight/
+reports/etf_baseline/vs_sp500/
+```
+
+Example:
+
+```text
+reports/etf_baseline/vs_equal_weight/mvo_max_sharpe.html
+reports/etf_baseline/vs_sp500/mvo_max_sharpe.html
+```
+
+Same strategy, different benchmark.
+
+This makes the interpretation cleaner:
+
+```text
+vs_equal_weight -> did optimization beat the naive 5-ETF allocation?
+vs_sp500        -> did it beat the simple US equity benchmark?
+```
+
+### Code Changes
+
+In `src/quantlab/experiments.py`, `_write_reports` now builds a benchmark dictionary:
+
+```python
+benchmarks = {
+    "equal_weight": runs["equal_weight"].returns,
+    "sp500": prices["SPY"].pct_change().fillna(0.0),
+}
+```
+
+Then it loops over each benchmark and writes a separate QuantStats report set.
+
+### Why This Matters
+
+This is a better research setup.
+
+Now each strategy has to answer two separate questions:
+
+```text
+Can it beat the naive allocation?
+Can it beat broad US equities?
+```
+
+## Stage 6: Rebalancing and Train/Test Splits
+
+In this stage we added two research controls:
+
+```text
+weekly/monthly rebalancing
+train/test split reporting
+```
+
+This is important because a strategy that looks good with daily rebalancing may only be good because it trades too often in a frictionless-looking backtest.
+
+### The Big Backtester Correction
+
+Before this stage, a filled weight table meant:
+
+```text
+target these same weights every day
+```
+
+That accidentally caused daily rebalancing.
+
+Example:
+
+```text
+Day 1 target: 50% SPY / 50% TLT
+Day 2 target: 50% SPY / 50% TLT
+```
+
+Even if the strategy was supposed to rebalance monthly, the backtester would rebalance on Day 2 to restore 50/50 after prices moved.
+
+That is not monthly rebalancing.
+
+The corrected meaning is:
+
+```text
+row has target weights -> trade to those weights
+row is NaN             -> do not trade; let weights drift
+```
+
+So monthly weights now look conceptually like:
+
+```text
+Jan 31: target 20/20/20/20/20
+Feb 01: NaN, no trade
+Feb 02: NaN, no trade
+Feb 28: target new weights
+```
+
+Between rebalance dates, the portfolio weights drift naturally as asset prices move.
+
+### Backtester Change
+
+In `src/quantlab/backtest.py`, `backtest_weights` now keeps the target table sparse.
+
+The key logic is:
+
+```python
+rebalance = targets.notna().any(axis=1)
+```
+
+On each day:
+
+```text
+1. earn the day's asset returns from yesterday's actual weights
+2. compute drifted weights after price moves
+3. if this is a rebalance day, trade to target weights
+4. otherwise do not trade
+5. record actual end-of-day weights
+```
+
+This separates:
+
+```text
+target weights
+actual weights
+```
+
+Actual weights move every day even if we do not trade.
+
+### Rebalance Target Helper
+
+We added `rebalance_targets` in `src/quantlab/portfolio.py`.
+
+It takes a daily target-weight table and keeps only the rebalance dates.
+
+Example:
+
+```python
+rebalance_targets(weights, "W-FRI")
+```
+
+means:
+
+```text
+only keep weekly Friday targets
+all other rows become NaN
+```
+
+And:
+
+```python
+rebalance_targets(weights, "ME")
+```
+
+means:
+
+```text
+only keep month-end targets
+```
+
+The experiment runner maps:
+
+```text
+daily   -> no sparse conversion
+weekly  -> W-FRI
+monthly -> ME
+```
+
+### MVO Rebalance Change
+
+`rolling_mvo_weights` now returns sparse target weights directly.
+
+Before, it forward-filled weights.
+
+Now it writes weights only on rebalance dates and leaves non-rebalance dates empty.
+
+The backtester handles the rest.
+
+This is cleaner:
+
+```text
+strategy/optimizer decides when to trade
+backtester simulates what happens between trades
+```
+
+### Experiment CLI
+
+The baseline runner now supports:
+
+```text
+--rebalance daily
+--rebalance weekly
+--rebalance monthly
+```
+
+Examples:
+
+```text
+python -m quantlab.experiments --rebalance monthly
+python -m quantlab.experiments --rebalance weekly
+```
+
+Monthly is the default.
+
+### Train/Test Split
+
+We also added split reporting.
+
+By default:
+
+```text
+split date = 2016-01-01
+```
+
+So each strategy gets three rows:
+
+```text
+full
+train
+test
+```
+
+Meaning:
+
+```text
+full  = whole available period
+train = before 2016-01-01
+test  = from 2016-01-01 onward
+```
+
+This does not magically make the strategy robust, but it is better than only looking at one full-period number.
+
+The research question becomes:
+
+```text
+Did it only work before 2016?
+Did it hold up after 2016?
+```
+
+You can disable split rows with:
+
+```text
+python -m quantlab.experiments --no-split
+```
+
+Or choose another date:
+
+```text
+python -m quantlab.experiments --split-date 2020-01-01
+```
+
+### Monthly Result With Split
+
+With monthly rebalancing and the default 2016 split:
+
+```text
+strategy            split  total_return  annual_return  sharpe  max_drawdown  avg_daily_turnover
+equal_weight        full        7.9029         0.1073  0.8755       -0.3187              0.0015
+equal_weight        train       1.5750         0.0899  0.7535       -0.3187              0.0017
+equal_weight        test        2.4575         0.1260  1.0017       -0.2607              0.0013
+inverse_vol_63d     full        8.2253         0.1091  1.0071       -0.2476              0.0038
+inverse_vol_63d     train       1.8382         0.0996  0.9601       -0.2226              0.0037
+inverse_vol_63d     test        2.2504         0.1194  1.0542       -0.2476              0.0038
+momentum_126d_top2  full        9.3813         0.1152  0.7759       -0.2842              0.0226
+momentum_126d_top2  train       2.0596         0.1071  0.7344       -0.2842              0.0226
+momentum_126d_top2  test        2.3931         0.1240  0.8187       -0.2835              0.0226
+mvo_min_variance    full        4.9124         0.0864  0.9891       -0.2370              0.0034
+mvo_min_variance    train       1.2405         0.0762  0.9804       -0.1388              0.0030
+mvo_min_variance    test        1.6389         0.0973  1.0072       -0.2370              0.0039
+mvo_max_sharpe      full        7.2210         0.1032  0.8774       -0.2621              0.0145
+mvo_max_sharpe      train       1.6823         0.0939  0.8955       -0.1733              0.0109
+mvo_max_sharpe      test        2.0649         0.1131  0.8721       -0.2621              0.0183
+```
+
+### Weekly Result
+
+With weekly rebalancing and no split rows:
+
+```text
+strategy            total_return  annual_return  sharpe  max_drawdown  avg_daily_turnover
+equal_weight        8.2687        0.1094         0.8794  -0.3190       0.0031
+inverse_vol_63d     8.1629        0.1088         1.0035  -0.2435       0.0063
+momentum_126d_top2  8.0664        0.1082         0.7631  -0.2744       0.0476
+mvo_min_variance    4.8781        0.0861         0.9898  -0.2349       0.0058
+mvo_max_sharpe      6.3896        0.0977         0.8473  -0.2705       0.0303
+```
+
+### Why This Matters
+
+Now we can ask better research questions:
+
+```text
+Does the strategy require daily trading?
+Does weekly or monthly rebalancing preserve the edge?
+Does it survive after 2016?
+Does turnover become reasonable?
+```
+
+High returns with daily rebalancing and high turnover are less interesting.
+
+Comparable returns with weekly or monthly rebalancing are much more practical.
