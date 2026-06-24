@@ -51,6 +51,22 @@ significance for implicit search.
   NOT beat naive 60/40 or equal-weight; a 2020-driven, one-regime result. High DSR != economic
   value. Process worked (OOS firewall held); strategy rejected per benchmark test.
 
+### Update 2026-06-24 (v2, continued search)
+
+Re-opened the search with (a) a beat-the-benchmark objective J = Information Ratio vs the
+tougher of {equal-weight-11, 60/40}, and (b) an added ML signal path (gradient-boosted
+forward-return predictor) in addition to trend. Caveat: OOS was already peeked once in v1, so
+it is partially spent; v2 search stayed on TRAIN only and OOS was NOT re-touched.
+
+- Validation champion: trend L63, gate, inverse_vol, vol_target=0.12, max_gross=2.0, ME.
+  TRAIN IR vs 60/40 = 0.366, Sharpe 1.09, maxDD -22.6%, turnover 9.7, beats both benchmarks.
+- Honest reads: Sharpe 1.09 vs benchmark 0.76 is leverage-invariant and genuinely better;
+  but the IR gain from 0.16 -> 0.37 is largely a leverage artifact (2x gross vs an unlevered
+  benchmark), not new alpha. inverse_vol > min_variance was the real signal improvement.
+- ML signal FAILED: every gradient-boosted variant had negative IR and lower Sharpe than
+  trend. Predicting raw forward returns from 6 features adds no edge here.
+- OOS: held. Run oos_report ONCE only when the search is declared finished.
+
 ---
 
 ## Template
