@@ -6,8 +6,13 @@ MAGNITUDE of the next move, not its direction. Input is second-resolution SPY
 bars (last price + total volume per second); vendor-agnostic.
 """
 
+import argparse
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+
+from .tracking import log_run
 
 K = 15  # 3 sign states x 5 volume quintiles
 
@@ -91,3 +96,110 @@ def magnitude_test(
         "dir_acc": round(float(hit.mean()), 3),
         "quintile_abs_bps": absr.groupby(quintile).mean().round(3).to_dict(),
     }
+
+
+def _mag_stats(fwd: pd.Series, trail: pd.Series, low: pd.Series) -> dict:
+    absr = fwd.abs()
+    a, b = absr[low], absr[~low]
+    t = (a.mean() - b.mean()) / np.sqrt(
+        a.var(ddof=1) / max(len(a), 1) + b.var(ddof=1) / max(len(b), 1)
+    )
+    hit = np.sign(fwd[low]) == np.sign(trail[low])
+    return {
+        "n": int(len(fwd)),
+        "n_low": int(low.sum()),
+        "uncond_abs_bps": round(float(absr.mean()), 3),
+        "low_abs_bps": round(float(a.mean()), 3),
+        "ratio": round(float(a.mean() / absr.mean()), 3),
+        "t_stat": round(float(t), 3),
+        "dir_acc": round(float(hit.mean()), 3),
+    }
+
+
+def walk_forward(close: pd.Series, volume: pd.Series, *, train_days: int = 10,
+                 test_days: int = 5, n_folds: int = 5, low_pct: float = 5.0,
+                 horizon_s: int = 300, vol_win: int = 120, win: int = 120) -> dict:
+    """Pre-registered OOS magnitude test (RL-2026-06-28-05): per fold, fit the
+    low-entropy threshold on train days only, freeze it, score test days;
+    pool test rows across folds."""
+    H = entropy_series(second_states(close, volume, vol_win), win)
+    fwd = (close.shift(-horizon_s) / close - 1.0) * 1e4
+    trail = (close / close.shift(horizon_s) - 1.0) * 1e4
+    df = pd.DataFrame({"H": H, "fwd": fwd, "trail": trail})
+    day = df.index.normalize()
+    dates = day.unique().sort_values()
+    span = train_days + test_days
+    folds, pooled = [], []
+    for i in range(n_folds):
+        block = dates[i * span : (i + 1) * span]
+        if len(block) <= train_days:  # no test dates left
+            break
+        h_tr = df.loc[day.isin(block[:train_days]), "H"].dropna()
+        te = df[day.isin(block[train_days:])].dropna()
+        if h_tr.empty or te.empty:
+            continue
+        h_thr = float(np.percentile(h_tr, low_pct))  # frozen: train rows only
+        low = te["H"] <= h_thr
+        s = _mag_stats(te["fwd"], te["trail"], low)
+        folds.append({"fold": i, "h_thr": round(h_thr, 4), "n_test": s["n"],
+                      "n_low": s["n_low"], "ratio": s["ratio"], "dir_acc": s["dir_acc"]})
+        pooled.append(te.assign(low=low))
+    all_te = pd.concat(pooled) if pooled else df.iloc[:0].assign(low=np.array([], dtype=bool))
+    return {"n_folds": len(folds),
+            "oos": _mag_stats(all_te["fwd"], all_te["trail"], all_te["low"]),
+            "folds": folds}
+
+
+def load_bars(path: str | Path) -> tuple[pd.Series, pd.Series]:
+    """Read an intraday CSV (timestamp, close, volume) into aligned series."""
+    df = pd.read_csv(path)
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+    df = df.set_index("timestamp").sort_index()
+    return df["close"], df["volume"]
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(description="Order-flow entropy walk-forward (RL-2026-06-28-05)")
+    p.add_argument("--path", required=True, help="intraday CSV: timestamp,close,volume")
+    p.add_argument("--train-days", type=int, default=10)
+    p.add_argument("--test-days", type=int, default=5)
+    p.add_argument("--n-folds", type=int, default=5)
+    p.add_argument("--horizon-s", type=int, default=300)
+    p.add_argument("--win", type=int, default=120)
+    p.add_argument("--vol-win", type=int, default=120)
+    p.add_argument("--low-pct", type=float, default=5.0)
+    p.add_argument("--hypothesis-ref", default=None)
+    p.add_argument("--note", default=None, help="honest caveats recorded with the run")
+    args = p.parse_args()
+
+    close, volume = load_bars(args.path)
+    days = int(close.index.normalize().nunique())
+    print(f"{args.path}: {len(close)} bars over {days} days, "
+          f"{close.index[0]} -> {close.index[-1]}")
+
+    res = walk_forward(
+        close, volume, train_days=args.train_days, test_days=args.test_days,
+        n_folds=args.n_folds, low_pct=args.low_pct, horizon_s=args.horizon_s,
+        vol_win=args.vol_win, win=args.win,
+    )
+    print(f"\nfolds: {res['n_folds']}\nOOS (pooled): {res['oos']}")
+    for f in res["folds"]:
+        print(" ", f)
+
+    log_run({
+        "hypothesis_ref": args.hypothesis_ref,
+        "source": args.path,
+        "note": args.note,
+        "bars": int(len(close)),
+        "days": days,
+        "strategy": "order_flow_entropy",
+        "params": {"train_days": args.train_days, "test_days": args.test_days,
+                   "n_folds": args.n_folds, "horizon_s": args.horizon_s,
+                   "win": args.win, "vol_win": args.vol_win, "low_pct": args.low_pct},
+        "metrics": res,
+        "status": "success",
+    })
+
+
+if __name__ == "__main__":
+    main()

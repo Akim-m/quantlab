@@ -26,7 +26,9 @@ significance for implicit search.
   arXiv:2512.15720) - RL-2026-06-28-05. Faithful replication of a published
   rule; thresholds frozen on train, walk-forward OOS. The paper itself reports
   20 parameter perturbations + a hand-tuned payoff rule, so treat its 2.89x
-  headline as already search-inflated when judging our reproduction.
+  headline as already search-inflated when judging our reproduction. Status:
+  engine + walk-forward runner built and tested; faithful run data-blocked (no
+  second-resolution SPY source), see entry below.
 
 ---
 
@@ -76,8 +78,28 @@ significance for implicit search.
   reproduces, monetization does not" as the most probable verdict.
 
 <!-- filled in AFTER the run -->
-- **Result:**
-- **Conclusion:**
+- **Result:** DATA-BLOCKED, not run at the paper's resolution. The engine
+  (`microstructure.py`) and the pre-registered walk-forward OOS runner
+  (`walk_forward`: low-entropy threshold fit on train days, frozen for test) are
+  built and covered by 13 tests, including a causality/no-look-ahead guard
+  (`entropy_series` is causal to 1e-12) and a leakage guard (each fold's
+  threshold uses train rows only, verified non-vacuously). The claim needs SPY
+  second-resolution bars over ~2025-10..11; the project's free Yahoo path tops
+  out at 1-minute for only ~5 recent days (1s -> HTTP 400, 1m beyond ~5d -> HTTP
+  422). A plumbing-only run on the obtainable 1-min SPY (5 days, horizon=5 bars,
+  1 fold of 3 train / 2 test) gave OOS magnitude ratio **0.97**, t **-0.48**,
+  dir_acc **0.458** - an honest null at the WRONG resolution and sample size,
+  NOT a test of the paper's claim (`experiments/log.jsonl`; the run's note field
+  flags every caveat). Known fidelity gap to fix before any real-data run:
+  fwd/trail returns and the entropy window use positional shift across day
+  boundaries, contaminating ~horizon rows at each session open/close; a faithful
+  second-resolution run must compute returns and reset transition counts
+  within-day.
+- **Conclusion:** Unresolved / data-blocked - neither pass nor fail. The
+  theory-backed magnitude claim is still untested at the paper's resolution; the
+  machinery to test it faithfully now exists and is guarded against look-ahead.
+  Awaiting a second-resolution SPY tick source. Do NOT read the 1-min null as
+  refutation: wrong resolution, and n far too small for inference.
 
 ---
 
@@ -104,8 +126,16 @@ significance for implicit search.
   do little. Expect beta-timing to NOT beat buy-and-hold on Sharpe.
 
 <!-- filled in AFTER the run -->
-- **Result:**
-- **Conclusion:**
+- **Result:** 17 assets run individually, 2006-2026, beta_lb=252d, cost=5bps
+  (`experiments/log.jsonl`, RL-2026-06-28-04). For the high-beta equities that
+  drive the book, buy-and-hold Sharpe >= strategy Sharpe: NVDA 0.90 vs 0.76,
+  TSLA 0.89 vs 0.77, AAPL 0.92 vs 0.84, META 0.69 vs 0.68; gold worst hit
+  (0.64 -> 0.19). Only AMD (0.52 -> 0.60), silver, and a couple of near-zero FX
+  pairs nominally improved. Max drawdowns on the high-beta names -67% to -99%.
+- **Conclusion:** As predicted - beta-timing is ~lightly leveraged buy-and-hold
+  and does NOT beat buy-and-hold on risk-adjusted return for the names that
+  carry it. Leveraging high beta buys raw return, not Sharpe (the BAB caveat);
+  low-equity-beta FX/gold get tiny positions that do little. Not promoted.
 
 ---
 
