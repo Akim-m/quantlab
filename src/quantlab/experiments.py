@@ -7,8 +7,18 @@ from .backtest import BacktestResult, backtest_weights
 from .data import close_prices, load_yahoo_ohlcv
 from .optimization import rolling_mvo_weights
 from .portfolio import equal_weight, rebalance_targets
-from .strategies import inverse_vol, long_top_momentum
+from .research import FX_GOLD
+from .strategies import (
+    beta_long_short,
+    beta_timing,
+    betting_against_beta,
+    inverse_vol,
+    long_top_momentum,
+)
 from .tracking import log_run
+
+# Deliberate beta spread: high-beta tech/cyclical vs low-beta staples/utility.
+BETA_STOCKS = ["NVDA", "TSLA", "AMD", "META", "AAPL", "KO", "PG", "JNJ", "WMT", "DUK"]
 
 ETF_UNIVERSE = ["SPY", "QQQ", "IWM", "TLT", "GLD"]
 REBALANCE = {"daily": None, "weekly": "W-FRI", "monthly": "ME"}
@@ -86,6 +96,114 @@ def run_nasdaq50(
 
     return _summarize_and_log(
         runs, prices, "nasdaq50", rebalance, cost_bps, split_date, hypothesis_ref
+    )
+
+
+def run_beta_scaled(
+    start: str = "2006-01-01",
+    cost_bps: float = 2.0,
+    beta_lb: int = 63,
+    refresh: bool = False,
+    report_dir: str | Path | None = "reports/beta_scaled",
+    hypothesis_ref: str | None = None,
+) -> pd.DataFrame:
+    data = _load_symbols(FX_GOLD + ["SPY", "QQQ"], refresh)
+    panel = close_prices(data).loc[start:].dropna()
+    prices = panel[FX_GOLD]
+
+    weights = rebalance_targets(
+        betting_against_beta(prices, panel["SPY"], beta_lb), "ME"
+    )
+    runs = {"beta_scaled": backtest_weights(prices, weights, cost_bps)}
+
+    if report_dir:
+        benchmarks = {
+            "sp500": panel["SPY"].pct_change().fillna(0.0),
+            "nasdaq": panel["QQQ"].pct_change().fillna(0.0),
+        }
+        _write_reports(runs, benchmarks, Path(report_dir))
+
+    return _summarize_and_log(
+        runs, prices, "fx_gold", "monthly", cost_bps, None, hypothesis_ref
+    )
+
+
+def run_beta_timing(
+    start: str = "2006-01-01",
+    cost_bps: float = 5.0,
+    beta_lb: int = 252,
+    refresh: bool = False,
+    hypothesis_ref: str | None = None,
+) -> pd.DataFrame:
+    symbols = BETA_STOCKS + FX_GOLD
+    data = _load_symbols(symbols + ["SPY"], refresh)
+    if "SPY" not in data:
+        raise ValueError("SPY (market proxy) failed to download")
+    market = close_prices({"SPY": data["SPY"]})["SPY"]
+
+    rows = []
+    for a in symbols:
+        if a not in data:
+            print(f"skipped (no data): {a}")
+            continue
+        px = close_prices({a: data[a]})[a]
+        pair = pd.concat([px.rename(a), market.rename("SPY")], axis=1).loc[start:].dropna()
+        if len(pair) < beta_lb + 60:
+            continue
+
+        w = beta_timing(pair[[a]], pair["SPY"], beta_lb)
+        res = backtest_weights(pair[[a]], w, cost_bps)
+        bh = pair[a].pct_change().fillna(0.0)
+        held = w[a][w[a] != 0.0]
+        rows.append({
+            "asset": a,
+            "years": round((pair.index[-1] - pair.index[0]).days / 365.25, 1),
+            "avg_beta": round(float(held.mean()), 2),
+            "strat_sharpe": round(res.sharpe, 2),
+            "bh_sharpe": round(_sharpe(bh), 2),
+            "ann_return": round(_annual_return(res.equity), 4),
+            "max_dd": round(res.max_drawdown, 3),
+            "turnover": round(float(res.turnover.mean()), 4),
+        })
+
+    summary = pd.DataFrame(rows).sort_values("avg_beta", ascending=False)
+    log_run({
+        "hypothesis_ref": hypothesis_ref,
+        "universe": "stocks+fx_gold_individual",
+        "n_assets": int(len(summary)),
+        "cost_bps": cost_bps,
+        "beta_lb": beta_lb,
+        "strategy": "beta_timing",
+        "metrics": summary.set_index("asset").to_dict(orient="index"),
+        "status": "success",
+    })
+    return summary
+
+
+def run_beta_long_short(
+    start: str = "2012-06-01",
+    cost_bps: float = 5.0,
+    beta_lb: int = 252,
+    refresh: bool = False,
+    report_dir: str | Path | None = "reports/beta_long_short",
+    hypothesis_ref: str | None = None,
+) -> pd.DataFrame:
+    data = _load_symbols(BETA_STOCKS + ["SPY", "QQQ"], refresh)
+    panel = close_prices(data).loc[start:].dropna()
+    prices = panel[BETA_STOCKS]
+
+    weights = beta_long_short(prices, panel["SPY"], beta_lb)
+    runs = {"beta_long_short": backtest_weights(prices, weights, cost_bps)}
+
+    if report_dir:
+        benchmarks = {
+            "sp500": panel["SPY"].pct_change().fillna(0.0),
+            "nasdaq": panel["QQQ"].pct_change().fillna(0.0),
+        }
+        _write_reports(runs, benchmarks, Path(report_dir))
+
+    return _summarize_and_log(
+        runs, prices, "us_stocks_10", "daily", cost_bps, None, hypothesis_ref
     )
 
 
