@@ -29,6 +29,12 @@ significance for implicit search.
   headline as already search-inflated when judging our reproduction. Status:
   engine + walk-forward runner built and tested; faithful run data-blocked (no
   second-resolution SPY source), see entry below.
+- **Anomaly-replication study, 24 price/OHLC/volume factors** on a survivorship-
+  bias-free ETF cross-section - RL-2026-07-07-01..24. One canonical, un-searched
+  parameterization per factor (so the implicit-search count is 24 tests, not a
+  grid). Judged on the LOCKED test window under a Benjamini-Hochberg FDR control
+  and a Deflated Sharpe Ratio (trials=24). Prior: most fail after correction
+  (McLean-Pontiff decay + coarse cross-section). See the RL-2026-07-07 section.
 
 ---
 
@@ -249,6 +255,121 @@ significance for implicit search.
   the verdict is "no evidence it works," not "proven worthless"; the correct next
   test is walk-forward (re-select params each window, concatenate OOS), not another
   single split - and that counts as a new, separately-tallied idea.
+
+---
+
+## RL-2026-07-07 - Anomaly-replication study (24 price/OHLC/volume factors)
+
+An honest replication of 24 published anomalies, each pre-registered with an ex
+ante economic rationale and ONE canonical, un-searched parameterization. This is
+not a hunt for winners: with 24 simultaneous tests the significance bar is raised
+for all of them, and the prior (McLean-Pontiff post-publication decay + a coarse
+cross-section of ~22 ETFs) is that MOST fail out of sample after correction. The
+failure table is the deliverable.
+
+### Shared, locked before running
+
+- **Universe (ETF24):** SPY, QQQ, IWM, EFA, EEM, VNQ, XLB, XLE, XLF, XLI, XLK,
+  XLP, XLU, XLV, XLY, TLT, IEF, LQD, HYG, GLD, SLV, DBC (22 liquid ETFs, common
+  history from ~2007-06; survivorship among major ETFs over this window is
+  minimal - noted as a small residual bias). Adj-close panel, inner-join, dropna.
+- **Window / split:** 2007-06 -> present; train ...2015-12-31, **test 2016-01-01
+  onward, touched exactly once** at the end. No iterating on the hold-out.
+- **Cost:** 5 bps per unit turnover. **Rebalance:** monthly (ME) except where a
+  factor's horizon demands otherwise (fixed per factor below). No winsorization.
+- **Construction:** cross-sectional factors are rank-demeaned, dollar-neutral,
+  scaled to unit gross (uses all names - more robust than decile sorts on ~22
+  assets); time-series factors are per-asset, inverse-vol sized, unit gross;
+  portfolio-construction factors are long-only, sum-to-one.
+- **No parameter search:** one fixed parameterization per factor, taken from its
+  source. Implicit-search count = **24 tests** (not a grid).
+- **Multiple-testing correction:** Benjamini-Hochberg FDR (q=0.10) on the TEST-
+  window Sharpe t-stats across all 24, plus the Deflated Sharpe Ratio
+  (Bailey-Lopez de Prado, trials=24). A factor "passes" only if it clears the
+  corrected bar on the locked test window.
+- **Cross-asset caveat:** several factors below are equity single-name effects
+  applied to a cross-ASSET ETF set; that generalization is expected to weaken
+  them, and the predictions say so.
+
+### Factors (id, signal, fixed params, rebalance, predicted)
+
+Cross-sectional (rank-demeaned L/S over ETF24; long high signal unless noted):
+- **01 short-term reversal** (Lehmann '90): signal = -ret(5d); W-FRI. *Pred:
+  weak +, costs bite at weekly turnover; low conf.*
+- **02 12-1 momentum** (Jegadeesh-Titman '93): ret(t-252..t-21); ME. *Pred:
+  modest +, best cross-sectional shot; medium.*
+- **03 long-term reversal** (DeBondt-Thaler '85): -ret(t-1260..t-252); ME.
+  *Pred: ~none on ETFs (single-name effect); low.*
+- **04 low-volatility** (Baker-Haugen): -vol(252d); ME. *Pred: + risk-adjusted,
+  maybe - raw; medium.*
+- **05 idiosyncratic vol** (Ang et al '06): -residual_vol vs SPY(252d); ME.
+  *Pred: weak on ETFs; low.*
+- **06 MAX / lottery** (Bali et al '11): -max(daily ret,21d); ME. *Pred: weak on
+  ETFs; low.*
+- **07 52-week high** (George-Hwang '04): close/high(252d); ME. *Pred: momentum-
+  correlated, modest; low-medium.*
+- **08 return skewness** (Boyer et al): -skew(252d); ME. *Pred: weak; low.*
+- **09 residual momentum** (Blitz '11): 12-1 momentum of SPY-residual returns; ME.
+  *Pred: momentum-like, maybe cleaner; low-medium.*
+- **10 same-month seasonality** (Heston-Sadka '08): mean same-calendar-month ret
+  over prior years; ME. *Pred: noisy, weak; low.*
+- **11 downside beta** (Ang-Chen-Xing '06): -downside_beta vs SPY(252d); ME.
+  *Pred: overlaps low-vol; low.*
+
+Time-series / trend (per-asset, inverse-vol sized):
+- **12 TSMOM** (Moskowitz-Ooi-Pedersen '12): sign(ret 252d), directional L/S; ME.
+  *Pred: +, strong cross-asset prior; medium-high - best shot.*
+- **13 Donchian breakout**: +1 at 252d-high, -1 at 252d-low; ME. *Pred: TSMOM-
+  correlated +; medium.*
+- **14 dual momentum** (Antonacci '14): long if 12m ret > 0 AND > cross-median,
+  else flat; ME. *Pred: +, defensive; medium.*
+- **15 vol-managed exposure** (Moreira-Muir '17): long, exposure ~ 1/vol(21d) to
+  a constant-vol target; ME. *Pred: Sharpe > buy&hold, weak standalone; medium.*
+- **16 crash-scaled momentum** (Daniel-Moskowitz '16): TSMOM scaled down when its
+  own recent realized vol spikes; ME. *Pred: better tail than 12; medium.*
+- **17 overnight-vs-intraday** (Lou-Polk-Skouras '19): long overnight (close->open)
+  minus intraday (open->close) component; daily. *Pred: overnight drift real but
+  execution-fragile on ETFs; low-medium.*
+- **18 Bollinger mean reversion**: long < lower band, short > upper (20d, 2s);
+  W-FRI. *Pred: weak at this horizon; low.*
+- **19 fixed-pairs mean reversion**: z-scored spread reversion on economically
+  linked pairs {SPY-QQQ, GLD-SLV, TLT-IEF, XLE-XLB}, averaged; ME. *Pred:
+  marginal after costs; low.*
+
+Portfolio construction (long-only over ETF24, ME):
+- **20 risk parity / ERC** (Maillard '10). *Pred: solid Sharpe / low vol; works as
+  construction, not alpha; medium.*
+- **21 max diversification** (Choueifaty-Coignard '08). *Pred: ERC-like; medium.*
+- **22 HRP** (Lopez de Prado '16). *Pred: ERC-like, better OOS stability; medium.*
+- **23 min-correlation portfolio**. *Pred: weak ERC variant; low.*
+- **24 dual-momentum + ERC overlay** (composite of 14 + 20). *Pred: trend timing +
+  RP sizing, best composite; medium.*
+
+<!-- filled in AFTER the single locked test-window evaluation -->
+- **Result:** Ran on ETF24, 22 assets, 2007-06 -> 2026-07, test = 2016-01 onward,
+  5 bps (`experiments/log.jsonl`, RL-2026-07-07; runner `factor_study.py`).
+  **7 of 24 clear naive BH-FDR (q=0.10)** on the test window - and every one is a
+  risk-based construction / trend-timing method, NOT a cross-sectional alpha:
+  risk_parity_erc (test Sharpe 0.97, t 3.12), min_correlation (0.91, 2.96),
+  vol_managed (0.91, 2.93), dual_momentum (0.77, 2.51), dual_mom_erc (0.76, 2.45),
+  max_diversification (0.75, 2.44), hrp (0.73, 2.35). **0 of 24 clear the Deflated
+  Sharpe Ratio (>0.95); best DSR = 0.42** (risk_parity_erc). The classic equity
+  anomalies were mostly NEGATIVE on test: low_volatility -0.54, max_lottery -0.72,
+  downside_beta -0.49, long_term_reversal -0.37, short_term_reversal -0.28,
+  overnight_intraday -0.29; momentum_12_1 ~0 (0.08), tsmom +0.33 (t 1.07, ns).
+- **Conclusion:** Exactly the pre-registered prior. Naive per-test significance
+  "finds" 7 strategies; the trials-aware Deflated Sharpe finds **none** - the 7 are
+  not distinguishable from the best of 24 lucky draws (and their negative skew
+  further deflates the DSR). The cross-sectional equity anomalies show clear
+  post-publication + cross-asset-transplant decay (McLean-Pontiff): the low-risk
+  family (low-vol, lottery, downside-beta) actively HURT over a high-beta-tech-led
+  2016-2026. **None promoted.** Honest headline: after correcting for 24
+  simultaneous tests, no anomaly shows convincing OOS skill on this universe.
+  Caveats: ~22-ETF cross-section is coarse (weakens single-name effects), and the
+  DSR is stringent by construction. Risk-parity/ERC stays a reasonable *construction*
+  default (best raw test Sharpe, lowest turnover 0.5%/day) - but as construction,
+  not a discovered edge. Any follow-up (e.g. an equity single-name universe) is a
+  new, separately-tallied idea, not a re-run on this locked test window.
 
 ---
 
