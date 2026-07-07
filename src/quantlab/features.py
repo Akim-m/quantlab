@@ -69,3 +69,30 @@ def high_ratio(prices: pd.DataFrame, lookback: int) -> pd.DataFrame:
     if lookback < 1:
         raise ValueError("lookback must be positive")
     return prices / prices.rolling(lookback).max()
+
+
+def rolling_beta(prices: pd.DataFrame, market: pd.Series, lookback: int) -> pd.DataFrame:
+    if lookback < 2:
+        raise ValueError("lookback must be at least 2")
+    r = prices.pct_change()
+    m = market.pct_change()
+    return r.rolling(lookback).cov(m).div(m.rolling(lookback).var(), axis=0)
+
+
+def rolling_kurt(prices: pd.DataFrame, lookback: int) -> pd.DataFrame:
+    if lookback < 4:
+        raise ValueError("lookback must be at least 4")
+    return pct_returns(prices).rolling(lookback).kurt()
+
+
+def low_ratio(prices: pd.DataFrame, lookback: int) -> pd.DataFrame:
+    if lookback < 1:
+        raise ValueError("lookback must be positive")
+    return prices / prices.rolling(lookback).min()
+
+
+def parkinson_vol(high: pd.DataFrame, low: pd.DataFrame, lookback: int) -> pd.DataFrame:
+    """Parkinson range-variance proxy: higher = more intraday range."""
+    if lookback < 1:
+        raise ValueError("lookback must be positive")
+    return (np.log(high / low) ** 2).rolling(lookback).mean()

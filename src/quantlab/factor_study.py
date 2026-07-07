@@ -21,12 +21,15 @@ from .tracking import log_run
 
 ETF24 = ["SPY", "QQQ", "IWM", "EFA", "EEM", "VNQ", "XLB", "XLE", "XLF", "XLI", "XLK",
          "XLP", "XLU", "XLV", "XLY", "TLT", "IEF", "LQD", "HYG", "GLD", "SLV", "DBC"]
+# NSE sector indices (survivorship-bias-free), market = Nifty 50 (^NSEI)
+NSE_SECTORS = ["^NSEBANK", "^CNXIT", "^CNXAUTO", "^CNXPHARMA", "^CNXFMCG", "^CNXMETAL",
+               "^CNXENERGY", "^CNXREALTY", "^CNXINFRA", "^CNXPSUBANK", "^CNXMEDIA", "^CNXPSE"]
 START = "2007-06-01"
 SPLIT = "2016-01-01"
 COST_BPS = 5.0
 
 
-def _factors(px, mkt, open_px, close_px):
+def _factors(px, mkt, open_px, close_px, high_px, low_px, volume_px):
     """(code, name, daily-or-sparse weights, rebalance freq). None = pass through."""
     return [
         ("01", "short_term_reversal", xsec.short_term_reversal(px, 5), "W-FRI"),
@@ -53,6 +56,14 @@ def _factors(px, mkt, open_px, close_px):
         ("22", "hrp", rolling_construction(px, "hrp"), None),
         ("23", "min_correlation", rolling_construction(px, "min_corr"), None),
         ("24", "dual_mom_erc", _dual_mom_erc(px), None),
+        ("25", "bab_beta", xsec.bab_beta(px, mkt, 252), "ME"),
+        ("26", "sharpe_momentum", xsec.sharpe_momentum(px), "ME"),
+        ("27", "kurtosis", xsec.kurtosis(px, 252), "ME"),
+        ("28", "low_52w", xsec.low_52w(px, 252), "ME"),
+        ("29", "parkinson_lowrange", xsec.parkinson_lowrange(high_px, low_px, 21), "ME"),
+        ("30", "turn_of_month", trend.turn_of_month(px), None),
+        ("31", "ma_trend", trend.ma_trend(px), "ME"),
+        ("32", "volume_momentum", trend.volume_momentum(px, volume_px), "ME"),
     ]
 
 
@@ -73,9 +84,9 @@ def _dual_mom_erc(px, lb=252, lookback=252, rebalance="ME"):
     return weights
 
 
-def _row(code, name, res):
+def _row(code, name, res, split):
     full = res.returns
-    test = res.returns.loc[SPLIT:]
+    test = res.returns.loc[split:]
     sr_full, _ = sharpe_tstat(full)
     sr_test, t_test = sharpe_tstat(test)
     return {
@@ -89,22 +100,30 @@ def _row(code, name, res):
     }
 
 
-def run(refresh: bool = False) -> pd.DataFrame:
-    data = load_yahoo_ohlcv(ETF24, refresh=refresh)
-    px = close_prices(data).loc[START:].dropna()
-    mkt = px["SPY"]
-    open_px = pd.DataFrame({s: data[s]["open"] for s in px.columns}).reindex(px.index)
-    close_px = pd.DataFrame({s: data[s]["close"] for s in px.columns}).reindex(px.index)
-    print(f"ETF24: {px.shape[1]} assets x {len(px)} days, "
-          f"{px.index[0].date()} -> {px.index[-1].date()}; test from {SPLIT}")
+def run(universe=None, market_sym="SPY", cost_bps=COST_BPS, split=SPLIT, start=START,
+        label="ETF24", hypothesis_ref="RL-2026-07-07", refresh=False) -> pd.DataFrame:
+    universe = universe or ETF24
+    data = load_yahoo_ohlcv(list(dict.fromkeys(universe + [market_sym])), refresh=refresh)
+    panel = close_prices(data).loc[start:].dropna()
+    px = panel[[s for s in universe if s in panel.columns]]
+    mkt = panel[market_sym]
+    ohlcv = {c: pd.DataFrame({s: data[s][c] for s in px.columns}).reindex(px.index)
+             for c in ("open", "close", "high", "low", "volume")}
+    print(f"{label}: {px.shape[1]} assets x {len(px)} days, "
+          f"{px.index[0].date()} -> {px.index[-1].date()}; test from {split}, cost {cost_bps}bps")
 
     rows = []
-    for code, name, weights, freq in _factors(px, mkt, open_px, close_px):
+    factors = _factors(px, mkt, ohlcv["open"], ohlcv["close"],
+                       ohlcv["high"], ohlcv["low"], ohlcv["volume"])
+    for code, name, weights, freq in factors:
         targets = rebalance_targets(weights, freq)
-        res = backtest_weights(px, targets, COST_BPS)
-        rows.append(_row(code, name, res))
+        res = backtest_weights(px, targets, cost_bps)
+        rows.append(_row(code, name, res, split))
 
-    sr_trials = [r["_test_returns"].mean() / r["_test_returns"].std() for r in rows]
+    # per-period test Sharpes for the DSR benchmark; drop dead (zero-variance)
+    # factors like an inapplicable pairs book, whose NaN would poison every DSR
+    sr_trials = [s for r in rows
+                 if np.isfinite(s := r["_test_returns"].mean() / r["_test_returns"].std())]
     reject = benjamini_hochberg([r["test_p"] for r in rows], q=0.10)
     for r, rej in zip(rows, reject):
         r["bh_pass"] = bool(rej)
@@ -120,14 +139,14 @@ def run(refresh: bool = False) -> pd.DataFrame:
         print("  " + ", ".join(f"{r.code} {r.name}" for r in survivors.itertuples()))
 
     log_run({
-        "hypothesis_ref": "RL-2026-07-07",
-        "universe": "ETF24",
+        "hypothesis_ref": hypothesis_ref,
+        "universe": label,
         "sample_start": str(px.index[0].date()),
         "sample_end": str(px.index[-1].date()),
         "n_assets": int(px.shape[1]),
-        "split": SPLIT,
-        "cost_bps": COST_BPS,
-        "strategy": "anomaly_replication_24",
+        "split": split,
+        "cost_bps": cost_bps,
+        "strategy": f"anomaly_replication_{len(table)}",
         "n_trials": len(table),
         "metrics": table.to_dict(orient="records"),
         "survivors": survivors["name"].tolist(),
@@ -137,10 +156,16 @@ def run(refresh: bool = False) -> pd.DataFrame:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="24-factor anomaly replication (RL-2026-07-07)")
+    parser = argparse.ArgumentParser(description="Anomaly replication study (RL-2026-07-07/08/09)")
+    parser.add_argument("--market", choices=["us", "india"], default="us")
     parser.add_argument("--refresh", action="store_true")
     args = parser.parse_args()
-    run(refresh=args.refresh)
+    if args.market == "india":
+        run(universe=NSE_SECTORS, market_sym="^NSEI", cost_bps=20.0, split="2018-01-01",
+            start="2011-08-01", label="NSE12", hypothesis_ref="RL-2026-07-09",
+            refresh=args.refresh)
+    else:
+        run(refresh=args.refresh)
 
 
 if __name__ == "__main__":

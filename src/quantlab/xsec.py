@@ -1,4 +1,4 @@
-"""Cross-sectional anomaly factors (RL-2026-07-07, ids 01-11).
+"""Cross-sectional anomaly factors (RL-2026-07-07 ids 01-11, RL-2026-07-08 ids 25-29).
 
 Each returns daily target weights: cross-sectionally ranked, demeaned,
 dollar-neutral, unit gross. Long high signal. No rebalance frequency applied.
@@ -10,7 +10,11 @@ import pandas as pd
 from .features import (
     downside_beta,
     high_ratio,
+    low_ratio,
+    parkinson_vol,
     residual_returns,
+    rolling_beta,
+    rolling_kurt,
     rolling_max_daily,
     rolling_skew,
     rolling_vol,
@@ -77,3 +81,26 @@ def seasonality(prices: pd.DataFrame) -> pd.DataFrame:
 
 def downside_beta_factor(prices: pd.DataFrame, market: pd.Series, lb: int = 252) -> pd.DataFrame:
     return _neutral((-downside_beta(prices, market, lb)).rank(axis=1))
+
+
+def bab_beta(prices: pd.DataFrame, market: pd.Series, lb: int = 252) -> pd.DataFrame:
+    return _neutral((-rolling_beta(prices, market, lb)).rank(axis=1))
+
+
+def sharpe_momentum(
+    prices: pd.DataFrame, mom_lb: int = 252, skip: int = 21, vol_lb: int = 126
+) -> pd.DataFrame:
+    mom = prices.shift(skip) / prices.shift(mom_lb) - 1
+    return _neutral((mom / rolling_vol(prices, vol_lb)).rank(axis=1))
+
+
+def kurtosis(prices: pd.DataFrame, lb: int = 252) -> pd.DataFrame:
+    return _neutral((-rolling_kurt(prices, lb)).rank(axis=1))
+
+
+def low_52w(prices: pd.DataFrame, lb: int = 252) -> pd.DataFrame:
+    return _neutral(low_ratio(prices, lb).rank(axis=1))
+
+
+def parkinson_lowrange(high: pd.DataFrame, low: pd.DataFrame, lb: int = 21) -> pd.DataFrame:
+    return _neutral((-parkinson_vol(high, low, lb)).rank(axis=1))

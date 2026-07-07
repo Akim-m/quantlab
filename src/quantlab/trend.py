@@ -101,3 +101,28 @@ def pairs(
         w[b] += z
     gross = w.abs().sum(axis=1).replace(0.0, np.nan)
     return w.div(gross, axis=0).fillna(0.0)
+
+
+def ma_trend(prices: pd.DataFrame, ma_lb: int = 200, vol_lb: int = 63) -> pd.DataFrame:
+    return _size(np.sign(prices - prices.rolling(ma_lb).mean()), prices, vol_lb)
+
+
+def volume_momentum(
+    prices: pd.DataFrame,
+    volume: pd.DataFrame,
+    lb: int = 252,
+    vol_sma: int = 21,
+    vol_lb: int = 63,
+) -> pd.DataFrame:
+    rising = volume > volume.rolling(vol_sma).mean()
+    return _size(np.sign(rolling_momentum(prices, lb)).where(rising, 0.0), prices, vol_lb)
+
+
+def turn_of_month(prices: pd.DataFrame, vol_lb: int = 63) -> pd.DataFrame:
+    # ToM window (Ariel '87): first 3 trading days of each month plus its last,
+    # found by row position within each (year, month) group of the trading index
+    g = pd.Series(0, index=prices.index).groupby([prices.index.year, prices.index.month])
+    pos = g.cumcount()
+    tom = (pos < 3) | (pos == g.transform("size") - 1)
+    ones = pd.DataFrame(1.0, index=prices.index, columns=prices.columns)
+    return _size(ones.mul(tom.astype(float), axis=0), prices, vol_lb)

@@ -35,6 +35,12 @@ significance for implicit search.
   grid). Judged on the LOCKED test window under a Benjamini-Hochberg FDR control
   and a Deflated Sharpe Ratio (trials=24). Prior: most fail after correction
   (McLean-Pontiff decay + coarse cross-section). See the RL-2026-07-07 section.
+- **8 more factors (ids 25-32)** extending the study to 32 - RL-2026-07-08. Same
+  ETF24 universe/split/cost/construction; correction re-run over all 32 (a harsher
+  bar). One fixed spec each, so +8 to the implicit-search count. See RL-2026-07-08.
+- **Same factor set on Indian markets (NSE sector indices)** - RL-2026-07-09. The
+  32-factor family re-run on a different, less-arbitraged market; a NEW sample, so
+  a separate pre-registration (not a re-run of the US locked window). See RL-2026-07-09.
 
 ---
 
@@ -370,6 +376,101 @@ Portfolio construction (long-only over ETF24, ME):
   default (best raw test Sharpe, lowest turnover 0.5%/day) - but as construction,
   not a discovered edge. Any follow-up (e.g. an equity single-name universe) is a
   new, separately-tallied idea, not a re-run on this locked test window.
+
+---
+
+## RL-2026-07-08 - Anomaly study extension (8 more factors, ids 25-32)
+
+Eight further published factors, distinct from the 24, added to the RL-2026-07-07
+family under the SAME locked methodology (ETF24 universe, 2007-06 -> present, test
+2016-01 onward, 5 bps, one un-searched spec each). The correction is re-run over
+all 32 factors (BH-FDR q=0.10 + Deflated Sharpe, trials=32) - a strictly harsher
+bar. The original 24 are fixed and un-tweaked; adding pre-registered new tests is
+not iterating on the hold-out. Prior: unchanged - most fail.
+
+Cross-sectional (rank-demeaned L/S over ETF24, ME):
+- **25 bab_beta** (Frazzini-Pedersen '14): signal = -CAPM beta vs SPY(252d), long
+  low beta. *Pred: low-beta bonds/gold get longs -> defensive; low-medium.*
+- **26 sharpe_momentum**: signal = (ret t-252..t-21)/vol(126d), smoother trends.
+  *Pred: momentum-like, maybe cleaner; low-medium.*
+- **27 kurtosis**: signal = -kurtosis(252d), short crash-prone. *Pred: weak on
+  ETFs; low.*
+- **28 low_52w**: signal = price/min(252d), distance above the 52w low. *Pred:
+  strength/anti-distress, momentum-correlated; low.*
+- **29 parkinson_lowrange**: signal = -mean(log(high/low)^2, 21d), long low-range
+  (OHLC range vol). *Pred: low-vol cousin, likely hurts like low-vol 2016-26; low.*
+
+Time-series / timing (per-asset, inverse-vol sized):
+- **30 turn_of_month** (Ariel '87): long-all inverse-vol only on the ToM window
+  (last trading day of month + first 3), else cash; daily. *Pred: real seasonal
+  but thin and cost-heavy; low-medium.*
+- **31 ma_trend**: direction = sign(price - SMA(200d)), classic MA crossover; ME.
+  *Pred: TSMOM-correlated +; medium.*
+- **32 volume_momentum**: sign(ret 252d) gated by rising volume (vol SMA up); ME.
+  *Pred: participation may sharpen trend slightly; low-medium.*
+
+<!-- filled in AFTER the single locked test-window evaluation over all 32 -->
+- **Result:** 32-factor run on ETF24, test 2016-2026, 5 bps (`experiments/log.jsonl`,
+  strategy `anomaly_replication_32`). The original 24 reproduced bit-identically
+  (refactor validated). Of the 8 new factors none is significant: best volume_momentum
+  test Sharpe 0.46 (t 1.47, DSR 0.035), then low_52w 0.40, ma_trend 0.36,
+  turn_of_month 0.30; sharpe_momentum -0.10, bab_beta -0.47 and parkinson_lowrange
+  -0.54 went NEGATIVE. Over all 32: **7 clear naive BH-FDR** (the same risk-based
+  construction/timing set as RL-2026-07-07, unchanged), **0 clear DSR>0.95** (best 0.43).
+- **Conclusion:** Extending to 32 changed nothing - still 0 survive the trials-aware
+  bar, and the harsher trials=32 deflation keeps the 7 BH-passers below DSR 0.95. The 8
+  new anomalies add no discovery; bab-beta / parkinson-range / the low-risk family remain
+  casualties of the high-beta-tech-led 2016-2026 regime. Reinforces RL-2026-07-07. None
+  promoted.
+
+---
+
+## RL-2026-07-09 - Same 32 factors on Indian markets (NSE sector indices)
+
+- **Date (pre-registration):** 2026-07-07
+- **Economic hypothesis:** India is a less-arbitraged, higher-retail-participation
+  market than the US, so anomalies eroded in the US (short-term reversal, momentum,
+  low-vol) may be stronger there - a genuine cross-market out-of-sample test of the
+  same 32 factors, not a re-run of the US locked window.
+- **Sample (locked):** universe = 12 NSE sector indices (^NSEBANK, ^CNXIT, ^CNXAUTO,
+  ^CNXPHARMA, ^CNXFMCG, ^CNXMETAL, ^CNXENERGY, ^CNXREALTY, ^CNXINFRA, ^CNXPSUBANK,
+  ^CNXMEDIA, ^CNXPSE); market/benchmark = ^NSEI (Nifty 50, NOT traded); window
+  common history ~2011-08 -> present; **test = 2018-01-01 onward**, touched once;
+  cost = **20 bps** (higher than US 5 bps: STT + wider spreads + lower index-proxy
+  liquidity). Construction/rebalance identical to RL-2026-07-07/08.
+- **Preprocessing (locked):** adj_close panel, inner-join, dropna. CAVEAT: ^ indices
+  are PRICE indices (no dividend reinvestment), so ~1-1.5%/yr dividend yield is
+  missing and long-biased returns are understated. `pairs` (US-symbol-specific) is
+  inapplicable here and reports flat - excluded from the verdict, not a real test.
+- **Specification:** the same 32 pre-registered factors, one fixed spec each, judged
+  on the locked test window under BH-FDR (q=0.10) + Deflated Sharpe (trials = the
+  applicable factors). No new search.
+- **Predicted outcome:** Honest prior. A less-efficient market MIGHT lift a few
+  (short-term reversal, momentum, low-vol) above their dismal US test numbers, but a
+  coarse 12-sector cross-section, ~6.5y train / 8.5y test, 20 bps costs, and the same
+  harsh multiple-testing bar make broad survival unlikely; risk-based construction
+  (ERC/HRP) is again the most probable "best raw Sharpe." Report whatever it is.
+
+<!-- filled in AFTER the single locked test-window evaluation -->
+- **Result:** NSE12 sector indices, 2011-08 -> 2026-07, test 2018-01, 20 bps
+  (`experiments/log.jsonl`, universe `NSE12`). Best raw: hrp 0.79, risk_parity_erc 0.75,
+  max_diversification 0.74 (t 2.13-2.26) - but the shorter, noisier sample gives lower
+  t-stats than the US, so **0 clear BH-FDR** (smallest p 0.012 vs the rank-1 bar 0.003)
+  and **0 clear DSR** (best 0.016). Strongly NEGATIVE and cost-driven: overnight_intraday
+  -2.54 (t -7.3), short_term_reversal -2.14 (t -6.2), bollinger -1.24 (t -3.6) - all
+  high-turnover (0.22-0.27) mean-reversion crushed by the 20 bps cost. Momentum mildly
+  positive (momentum_12_1 0.19, residual_momentum 0.28, sharpe_momentum 0.29) but ns;
+  low_volatility +0.13 (vs -0.54 in the US). `pairs` inapplicable (US symbols) -> flat,
+  excluded from the DSR trial set.
+- **Conclusion:** The "less-arbitraged market -> stronger anomalies" prior is NOT
+  supported - India gives the SAME verdict as the US: 0 survive correction. If anything
+  the classic anomalies fare worse here once realistic 20 bps costs hit the high-turnover
+  reversal/intraday books; only the small cross-market flip in low-vol (negative in the US,
+  mildly positive in India) hints at a regime difference, and it is not significant.
+  Risk-based construction (HRP/ERC) is again best raw Sharpe but insignificant on this
+  ~8.5y test. Caveats: coarse 12-sector cross-section, price-index (dividends missing,
+  returns understated), short history. None promoted; a longer or single-stock Indian
+  sample is a separate, future, separately-tallied idea.
 
 ---
 
