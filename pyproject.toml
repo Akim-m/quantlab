@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Quant research lab for trading and portfolio optimization."
 requires-python = ">=3.11"
 dependencies = [
+    "growwapi>=1.5.0",
     "numpy>=1.26",
     "pandas>=2.2",
     "quantstats>=0.0.62",
