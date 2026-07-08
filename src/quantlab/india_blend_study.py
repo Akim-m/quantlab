@@ -13,11 +13,29 @@ import pandas as pd
 from .backtest import BacktestResult, backtest_weights
 from .blend import composite, long_only_topq, long_short, trend_overlay, vol_target_overlay
 from .evaluation import sharpe_tstat
-from .features import residual_returns, rolling_beta, rolling_vol
+from .features import low_ratio, residual_returns, rolling_beta, rolling_vol
+from .optimization import erc_weights_fast
 from .portfolio import rebalance_targets
 
 
-def raw_signals(px: pd.DataFrame, mkt: pd.Series) -> dict[str, pd.DataFrame]:
+def _sector_demean(sig: pd.DataFrame, sectors: dict[str, str] | None) -> pd.DataFrame:
+    """Demean each name's signal against its industry group per date. Names with no
+    industry label (or when no map is given) keep their plain cross-sectional demean."""
+    plain = sig.sub(sig.mean(axis=1), axis=0)
+    if not sectors:
+        return plain
+    groups = pd.Series({c: sectors.get(c, "__none__") for c in sig.columns})
+    out = plain.copy()
+    for g, members in groups.groupby(groups):
+        if g == "__none__":
+            continue
+        cols = list(members.index)
+        grp = sig[cols]
+        out[cols] = grp.sub(grp.mean(axis=1), axis=0)
+    return out
+
+
+def raw_signals(px: pd.DataFrame, mkt: pd.Series, sectors: dict[str, str] | None = None) -> dict[str, pd.DataFrame]:
     """Economically-motivated cross-sectional signals (higher = more attractive)."""
     mom = px.shift(21) / px.shift(252) - 1.0
     res = residual_returns(px, mkt, 252)
@@ -28,7 +46,38 @@ def raw_signals(px: pd.DataFrame, mkt: pd.Series) -> dict[str, pd.DataFrame]:
         "low_vol": -rolling_vol(px, 252),
         "low_beta": -rolling_beta(px, mkt, 252),
         "short_rev": -px.pct_change(5),
+        "mom_6_1": px.shift(21) / px.shift(126) - 1.0,
+        "off_low": low_ratio(px, 252),
+        "sector_mom": _sector_demean(mom, sectors),
     }
+
+
+def lo_erc(
+    px: pd.DataFrame,
+    score: pd.DataFrame,
+    top: float = 0.2,
+    lookback: int = 252,
+    rebalance: str = "ME",
+) -> pd.DataFrame:
+    """Monthly long-only book: select the top `top` fraction by `score`, then ERC-
+    weight them on the trailing `lookback`-day return covariance (else cash). Same
+    monthly-selection pattern as india_study._dual_mom_erc_fast."""
+    rets = px.pct_change().dropna()
+    ranks = score.rank(axis=1, ascending=False)
+    n = score.notna().sum(axis=1)
+    keep = ranks.le((n * top).clip(lower=1.0), axis=0)
+    weights = pd.DataFrame(np.nan, index=px.index, columns=px.columns)
+    for date in px.groupby(pd.Grouper(freq=rebalance)).tail(1).index:
+        hist = rets.loc[:date].tail(lookback)
+        weights.loc[date] = 0.0
+        if len(hist) < lookback or date not in keep.index:
+            continue
+        sel = [c for c in keep.columns[keep.loc[date]] if hist[c].notna().all()]
+        if not sel:
+            continue
+        w = erc_weights_fast(hist[sel].cov() * 252)
+        weights.loc[date, sel] = w.values
+    return weights
 
 
 def benchmark_returns(index: pd.Index, bench_px: pd.Series) -> pd.Series:

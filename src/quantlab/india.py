@@ -47,6 +47,16 @@ def nifty200_symbols(**kw) -> list[str]:
     return nse_index_symbols("nifty200", **kw)
 
 
+def sector_map(index: str = "nifty500", cache_dir: str | Path = "data/raw") -> dict[str, str]:
+    """Map each constituent (SYMBOL.NS) to its NSE industry group, from the cached
+    constituent CSV (columns 'Symbol' and 'Industry'). Used for sector-neutral
+    signals; a name absent here is treated as having no industry label."""
+    path = Path(cache_dir) / f"ind_{index}list.csv"
+    rows = list(csv.DictReader(io.StringIO(path.read_text(encoding="utf-8", errors="replace"))))
+    return {f"{r['Symbol'].strip()}.NS": r["Industry"].strip()
+            for r in rows if r.get("Symbol") and r.get("Industry")}
+
+
 def _winsorize_prices(px: pd.DataFrame, cap: float) -> pd.DataFrame:
     """Rebuild the price panel from daily returns clipped to +/-cap.
 

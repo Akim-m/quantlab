@@ -70,6 +70,43 @@ def long_only_topq(
     return raw.div(total, axis=0).fillna(0.0)
 
 
+def long_only_topq_banded(
+    score: pd.DataFrame,
+    prices: pd.DataFrame,
+    buy_top: float = 0.15,
+    hold_top: float = 0.35,
+    vol_lb: int = 63,
+    weighting: str = "invvol",
+) -> pd.DataFrame:
+    """Top-quantile long-only book with entry/exit hysteresis to cut turnover.
+
+    A name ENTERS the book when its score rank crosses into the top `buy_top`
+    fraction, and STAYS while it remains in the wider top `hold_top` band; it drops
+    only when it falls past `hold_top`. Held names are invvol- (or equal-) weighted,
+    renormalized to sum to 1. Causal: rank(t) uses score(t) and holdings(t-1) only,
+    so no future information enters today's book."""
+    ranks = score.rank(axis=1, ascending=False)
+    n = score.notna().sum(axis=1)
+    buy_thr = (n * buy_top).clip(lower=1.0)
+    hold_thr = (n * hold_top).clip(lower=1.0)
+    inv = 1.0 / rolling_vol(prices, vol_lb).replace(0.0, np.nan) if weighting == "invvol" else None
+
+    weights = pd.DataFrame(0.0, index=score.index, columns=score.columns)
+    held = pd.Series(False, index=score.columns)
+    for date in score.index:
+        r = ranks.loc[date]
+        stay = held & r.le(hold_thr.loc[date])
+        enter = r.le(buy_thr.loc[date])
+        held = (stay | enter).fillna(False) & r.notna()
+        if not held.any():
+            continue
+        raw = (inv.loc[date] if weighting == "invvol" else held.astype(float)).where(held)
+        total = raw.sum()
+        if total > 0:
+            weights.loc[date] = (raw / total).fillna(0.0)
+    return weights
+
+
 def trend_overlay(book: pd.DataFrame, market: pd.Series, ma_lb: int = 200) -> pd.DataFrame:
     """Scale the whole book to cash on days the market closed below its `ma_lb` MA.
 

@@ -595,8 +595,49 @@ T-bill; (4) 200MA at month-ends exits AFTER the Feb-Mar 2020 crash - 2020 report
 explicitly.
 
 <!-- filled in AFTER the single locked test-window evaluation -->
-- **Result:** _pending run_
-- **Conclusion:** _pending run_
+- **Result:** Ran the frozen 9-trial family on NIFTY500-277, test 2017-01-01 -> 2026-07-07,
+  20 bps, monthly (`india_run.py`; `experiments/log.jsonl`, hypothesis_ref RL-2026-07-10).
+  Benchmarks (test Sharpe): raw ^NSEI 0.80, TR-proxy (^NSEI + 1.4%/yr) 0.89, equal-weight-
+  277 net **1.35**. Long-only books, all beating Nifty decisively: **REGIME** (momentum
+  risk-on / 50%-cash-50%-low-vol risk-off via 200d MA) test Sharpe **1.70**, ann +29.9%,
+  maxDD **-21.9%**, turnover 2.8%/mo, Feb-Jun 2020 **-2.2%**; LO-ERC 1.70; LO-CORE 1.63;
+  LO-BAND 1.63; LO-EXT 1.62; LO-CORE-NOOVERLAY 1.51; LO-VT 1.44; hrp 1.42. Long-short:
+  LS-RESID2 0.86 (t 2.61), LS-CORE 0.80 (t 2.45), maxDD ~-19%, near-zero/negative bear beta.
+  - **Alpha attribution (paired monthly active-return t):** vs Nifty-TR, LO-CORE t 1.92,
+    REGIME t 2.73 -> beat the index. vs EQUAL-WEIGHT-277, NONE significant on RAW return
+    (act_t_ew 0.06-0.52): the index-beating is the mid-cap/breadth premium (EW-277 alone
+    = 1.35), NOT momentum stock-selection. But on RISK-ADJUSTED (CAPM) alpha vs EW-277 the
+    overlay books ARE significant (alpha_t_ew 2.86-3.17) - the trend/regime overlay adds
+    Sharpe via beta/drawdown reduction, not extra return.
+  - **Strict verdict:** BH-FDR (q=0.10) passes the 7 long-only books; both long-short pass
+    BH. Deflated Sharpe against the FULL 40-trial search (factor Sharpes -2.3..+1.6):
+    **0 of 9 clear DSR>0.95** (LO-CORE 0.006, REGIME 0.010, LS 0.000). [A DSR computed on
+    only the 9 self-similar winners inflates to ~1.0 - a narrow-trial-set artifact that was
+    caught and corrected; the full-family DSR is the honest bar and matches RL-07-08/09's 0.]
+  - **Situation -> winner:** long-only deployable / bear / high-vol / 2020-crash -> REGIME;
+    max bull exposure -> LO-CORE-NOOVERLAY (bull Sharpe 1.88); universe breadth -> N500 >
+    N200 > N50 for every strategy; low-turnover/passive -> HRP (1.0%/mo); market-neutral,
+    uncorrelated, calm-market -> LS-RESID2. No strategy beats its own-universe EW on the
+    raw paired t in any cell.
+- **Conclusion:** Partial WIN, honestly bounded - and the pre-registered prior was right.
+  A DEPLOYABLE long-only strategy that beats the Nifty net of costs OOS exists and is robust
+  across universes, costs, and sub-periods: **REGIME** (broad momentum book + inverse-vol
+  sizing + causal 200-day-MA regime switch) - test Sharpe 1.70 vs Nifty 0.89, drawdown -22%
+  vs -38%, and it sidesteps 2020 (-2% vs -13%). Honest attribution: the RETURN edge over the
+  cap-weighted index is the equal-weight/mid-cap breadth premium (a naive EW-277 book also
+  beats Nifty; paired active-t vs EW ~ 0), NOT momentum alpha; what the momentum + regime
+  overlay genuinely adds is RISK-ADJUSTED improvement (higher Sharpe, half the drawdown),
+  significant as CAPM alpha vs EW-277 (t~3). The cleanest PURE alpha is the market-neutral
+  residual-momentum blend (Sharpe 0.86, uncorrelated) - but only ~5%/yr and it fails DSR.
+  NONE clears the strict trials-aware Deflated-Sharpe bar (as in every prior study here).
+  Caveats realized: current-membership universe inflates absolute long-only returns via
+  survivorship (the less-exposed N50 column and long-short books are more modest); the OOS
+  window is second-use for these signal families; cash earns 0, biasing overlay books DOWN
+  ~6.5%/yr. **Promoted as a deployable smart-beta + risk-management strategy (REGIME /
+  LO-CORE) with disclosed caveats; NOT promoted as statistically-proven alpha.** The winning
+  answer for "different situations": momentum-tilted broad book for return, a 200-MA regime
+  overlay for drawdown/bear protection, and a market-neutral residual-momentum sleeve as the
+  uncorrelated diversifier.
 
 ---
 

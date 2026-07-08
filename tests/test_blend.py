@@ -4,6 +4,7 @@ import pandas as pd
 from quantlab.blend import (
     composite,
     long_only_topq,
+    long_only_topq_banded,
     long_short,
     market_on,
     regime_switch,
@@ -42,6 +43,45 @@ def test_long_only_topq_sums_to_one_and_nonneg():
     assert (w >= -1e-12).all()
     assert abs(w.sum() - 1.0) < 1e-9
     assert (w > 0).sum() == 2  # top half of 4 names
+
+
+def _ranked_row(cols, order):
+    """A score row assigning descending scores in `order` (order[0] = best rank)."""
+    s = pd.Series(index=list(cols), dtype=float)
+    for i, c in enumerate(order):
+        s[c] = len(order) - i
+    return s
+
+
+def test_long_only_topq_banded_hysteresis_enters_holds_and_drops():
+    cols = list("ABCDEFGHIJ")  # 10 names -> buy_thr=2, hold_thr=5
+    idx = pd.bdate_range("2020-01-01", periods=3)
+    # A: rank 1 (enters) -> rank 4 (in hold band, stays) -> rank 8 (past hold, drops)
+    rows = [
+        _ranked_row(cols, ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]),
+        _ranked_row(cols, ["B", "C", "D", "A", "E", "F", "G", "H", "I", "J"]),
+        _ranked_row(cols, ["B", "C", "D", "E", "F", "G", "H", "A", "I", "J"]),
+    ]
+    score = pd.DataFrame(rows, index=idx)
+    px = pd.DataFrame(100.0, index=idx, columns=cols)
+    w = long_only_topq_banded(score, px, buy_top=0.2, hold_top=0.5, weighting="ew")
+
+    assert w.loc[idx[0], "A"] > 0                     # enters on rank 1
+    assert w.loc[idx[1], "A"] > 0                     # rank 4 within hold band -> holds
+    assert w.loc[idx[2], "A"] == 0                    # rank 8 past hold band -> drops
+    for d in idx:
+        assert abs(w.loc[d].sum() - 1.0) < 1e-9       # always fully invested
+        assert (w.loc[d] >= -1e-12).all()
+
+
+def test_long_only_topq_banded_is_causal():
+    px = _prices()
+    score = px.pct_change(60)
+    w = long_only_topq_banded(score, px, buy_top=0.25, hold_top=0.5)
+    s2 = score.copy()
+    s2.iloc[-1] = s2.iloc[-1] * 5.0  # perturb the last row only
+    w2 = long_only_topq_banded(s2, px, buy_top=0.25, hold_top=0.5)
+    assert np.allclose(w.iloc[-5].to_numpy(), w2.iloc[-5].to_numpy())
 
 
 def test_long_short_dollar_neutral_unit_gross():
