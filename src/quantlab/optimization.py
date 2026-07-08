@@ -9,7 +9,7 @@ from scipy.optimize import minimize
 from scipy.spatial.distance import squareform
 
 Objective = Literal["min_variance", "max_sharpe"]
-Method = Literal["erc", "max_div", "hrp", "min_corr"]
+Method = Literal["erc", "erc_fast", "max_div", "hrp", "min_corr"]
 
 
 def min_variance_weights(cov: pd.DataFrame, max_weight: float = 0.6) -> pd.Series:
@@ -141,6 +141,34 @@ def erc_weights(cov: pd.DataFrame, max_weight: float = 1.0) -> pd.Series:
     return _solve(assets, objective, max_weight)
 
 
+def erc_weights_fast(cov: pd.DataFrame, tol: float = 1e-10, max_iter: int = 2000) -> pd.Series:
+    """Equal-risk-contribution weights via cyclical coordinate descent
+    (Griveau-Billion, Richard & Roncalli 2013). Long-only, fully invested.
+
+    Each coordinate solves its first-order condition w_i (cov w)_i = b_i, whose
+    positive root is closed form: w_i = (-c_i + sqrt(c_i^2 + 4 a_i b_i)) / (2 a_i),
+    with a_i = cov_ii and c_i = sum_{j!=i} cov_ij w_j. Overall scale is arbitrary
+    (normalized at the end), so equal budgets b_i give ERC. Scales to hundreds of
+    assets where the SLSQP `erc_weights` stalls; matches it to ~1e-6 RC dispersion
+    (test_optimization)."""
+    assets = list(cov.columns)
+    c = _clean_cov(cov)
+    n = c.shape[0]
+    if n == 1:
+        return pd.Series([1.0], index=assets)
+    b = 1.0 / n
+    w = 1.0 / np.sqrt(np.diag(c))          # inverse-vol warm start
+    w /= w.sum()
+    for _ in range(max_iter):
+        w_old = w.copy()
+        for i in range(n):
+            ci = c[i] @ w - c[i, i] * w[i]  # sum_{j!=i} cov_ij w_j (Gauss-Seidel)
+            w[i] = (-ci + np.sqrt(ci * ci + 4.0 * c[i, i] * b)) / (2.0 * c[i, i])
+        if np.max(np.abs(w - w_old)) < tol:
+            break
+    return pd.Series(w / w.sum(), index=assets)
+
+
 def max_div_weights(cov: pd.DataFrame, max_weight: float = 1.0) -> pd.Series:
     assets = list(cov.columns)
     c = _clean_cov(cov)
@@ -213,6 +241,8 @@ def rolling_construction(
         cov = hist.cov() * 252
         if method == "erc":
             weights.loc[date] = erc_weights(cov)
+        elif method == "erc_fast":
+            weights.loc[date] = erc_weights_fast(cov)
         elif method == "max_div":
             weights.loc[date] = max_div_weights(cov)
         elif method == "hrp":

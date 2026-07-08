@@ -1,11 +1,27 @@
+import numpy as np
 import pandas as pd
 import pytest
 
 from quantlab.optimization import (
+    erc_weights_fast,
     max_sharpe_weights,
     min_variance_weights,
     rolling_mvo_weights,
 )
+
+
+def test_erc_fast_equalizes_risk_contributions_and_scales():
+    rng = np.random.default_rng(1)
+    for n in (5, 25, 150):
+        idx = [f"a{i}" for i in range(n)]
+        a = rng.normal(size=(n, n))
+        cov = pd.DataFrame(a @ a.T / n + np.eye(n) * 0.1, columns=idx, index=idx)
+        w = erc_weights_fast(cov)
+        assert w.sum() == pytest.approx(1.0)
+        assert (w > 0).all()                       # long-only, fully invested
+        m = cov.to_numpy() @ w.to_numpy()
+        rc = w.to_numpy() * m / (w.to_numpy() @ m)  # risk contributions
+        assert rc.std() < 1e-6                     # equal risk contribution
 
 
 def test_min_variance_weights_respect_constraints() -> None:

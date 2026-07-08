@@ -15,14 +15,79 @@ import argparse
 import numpy as np
 import pandas as pd
 
+from . import trend, xsec
 from .backtest import backtest_weights
 from .evaluation import benjamini_hochberg, deflated_sharpe_ratio, one_sided_p, sharpe_tstat
-from .factor_study import _factors
 from .india import BENCHMARK, TRADEABLE_BENCH, india_panel
+from .optimization import erc_weights_fast, rolling_construction
 from .portfolio import rebalance_targets
 from .tracking import log_run
 
 COST_BPS = 20.0  # STT + spread + impact; matches RL-2026-07-09
+
+
+def _dual_mom_erc_fast(px, lb=252, lookback=252, rebalance="ME"):
+    """Factor 24 with scalable ERC: ERC-weight the dual-momentum qualifiers each
+    month (else cash). Same rule as factor_study._dual_mom_erc but erc_weights_fast
+    so it survives a few-hundred-name universe."""
+    rets = px.pct_change().dropna()
+    dm = trend.dual_momentum(px, lb)
+    weights = pd.DataFrame(np.nan, index=px.index, columns=px.columns)
+    for date in px.groupby(pd.Grouper(freq=rebalance)).tail(1).index:
+        hist = rets.loc[:date].tail(lookback)
+        qual = list(dm.columns[dm.loc[date] > 0]) if date in dm.index else []
+        if not qual or len(hist) < lookback:
+            weights.loc[date] = 0.0
+            continue
+        w = erc_weights_fast(hist[qual].cov() * 252)
+        weights.loc[date] = 0.0
+        weights.loc[date, qual] = w.values
+    return weights
+
+
+def _scalable_factors(px, mkt, ohlcv):
+    """The RL-2026-07-07/08 factor family, rebuilt for a few-hundred-name universe.
+
+    Specs are copied verbatim from factor_study._factors (kept identical for a clean
+    cross-market comparison) EXCEPT construction: ERC (20) and dual-mom-ERC (24) use
+    the fast CCD ERC, and max_diversification (21) - SLSQP-only, intractable at this
+    size - is DROPPED and disclosed (HRP + min_corr remain the construction reps). We
+    build the list directly instead of via _factors, whose eager SLSQP ERC would
+    crash before any filtering. So the applicable family is 31 factors, not 32."""
+    o, c, h, low, v = (ohlcv["open"], ohlcv["close"], ohlcv["high"], ohlcv["low"], ohlcv["volume"])
+    return [
+        ("01", "short_term_reversal", xsec.short_term_reversal(px, 5), "W-FRI"),
+        ("02", "momentum_12_1", xsec.momentum_12_1(px), "ME"),
+        ("03", "long_term_reversal", xsec.long_term_reversal(px), "ME"),
+        ("04", "low_volatility", xsec.low_volatility(px, 252), "ME"),
+        ("05", "idio_vol", xsec.idio_vol(px, mkt, 252), "ME"),
+        ("06", "max_lottery", xsec.max_lottery(px, 21), "ME"),
+        ("07", "high_52w", xsec.high_52w(px, 252), "ME"),
+        ("08", "skewness", xsec.skewness(px, 252), "ME"),
+        ("09", "residual_momentum", xsec.residual_momentum(px, mkt, 252, 21), "ME"),
+        ("10", "seasonality", xsec.seasonality(px), "ME"),
+        ("11", "downside_beta", xsec.downside_beta_factor(px, mkt, 252), "ME"),
+        ("12", "tsmom", trend.tsmom(px), "ME"),
+        ("13", "donchian", trend.donchian(px), "ME"),
+        ("14", "dual_momentum", trend.dual_momentum(px), "ME"),
+        ("15", "vol_managed", trend.vol_managed(px), "ME"),
+        ("16", "crash_scaled_tsmom", trend.crash_scaled_tsmom(px), "ME"),
+        ("17", "overnight_intraday", trend.overnight_intraday(o, c), None),
+        ("18", "bollinger", trend.bollinger(px), "W-FRI"),
+        ("19", "pairs", trend.pairs(px), "ME"),   # US symbols -> flat here, excluded from DSR
+        ("20", "risk_parity_erc", rolling_construction(px, "erc_fast"), None),
+        ("22", "hrp", rolling_construction(px, "hrp"), None),
+        ("23", "min_correlation", rolling_construction(px, "min_corr"), None),
+        ("24", "dual_mom_erc", _dual_mom_erc_fast(px), None),
+        ("25", "bab_beta", xsec.bab_beta(px, mkt, 252), "ME"),
+        ("26", "sharpe_momentum", xsec.sharpe_momentum(px), "ME"),
+        ("27", "kurtosis", xsec.kurtosis(px, 252), "ME"),
+        ("28", "low_52w", xsec.low_52w(px, 252), "ME"),
+        ("29", "parkinson_lowrange", xsec.parkinson_lowrange(h, low, 21), "ME"),
+        ("30", "turn_of_month", trend.turn_of_month(px), None),
+        ("31", "ma_trend", trend.ma_trend(px), "ME"),
+        ("32", "volume_momentum", trend.volume_momentum(px, v), "ME"),
+    ]
 
 
 def _row(code, name, res, split):
@@ -63,8 +128,7 @@ def run(
     print(f"{label}: {px.shape[1]} stocks x {len(px)} days, "
           f"{px.index[0].date()} -> {px.index[-1].date()}; test from {split}, cost {cost_bps}bps")
 
-    factors = _factors(px, mkt, ohlcv["open"], ohlcv["close"],
-                       ohlcv["high"], ohlcv["low"], ohlcv["volume"])
+    factors = _scalable_factors(px, mkt, ohlcv)
     rows = []
     for code, name, weights, freq in factors:
         targets = rebalance_targets(weights, freq)
@@ -73,8 +137,8 @@ def run(
 
     # DSR benchmark spread: drop dead/inapplicable books (e.g. US-only `pairs`)
     # whose zero-variance test returns would poison the trial variance
-    sr_trials = [s for r in rows
-                 if np.isfinite(s := r["_test_returns"].mean() / r["_test_returns"].std())]
+    sr_trials = [r["_test_returns"].mean() / sd
+                 for r in rows if (sd := r["_test_returns"].std()) > 0]
     reject = benjamini_hochberg([r["test_p"] for r in rows], q=0.10)
     for r, rej in zip(rows, reject):
         r["bh_pass"] = bool(rej)

@@ -41,6 +41,14 @@ significance for implicit search.
 - **Same factor set on Indian markets (NSE sector indices)** - RL-2026-07-09. The
   32-factor family re-run on a different, less-arbitraged market; a NEW sample, so
   a separate pre-registration (not a re-run of the US locked window). See RL-2026-07-09.
+- **Broad Indian SINGLE-STOCK study + blends + regime switch** - RL-2026-07-10. The
+  32-factor family on a real Nifty 500 cross-section with total-return (adj_close)
+  data and long history - the two limits RL-2026-07-09's own conclusion named - PLUS
+  new pre-registered strategies (long-only top-quintile variants, a momentum+low-vol
+  composite blend, causal trend/vol overlays, a 200-day-MA regime switch). A NEW
+  sample => separate pre-registration. Aim: map which strategy wins in which situation
+  (constraint / universe breadth / cost / causal market regime) and ship a deployable
+  long-only blend. Implicit-search count for this family recorded with the results.
 
 ---
 
@@ -471,6 +479,77 @@ Time-series / timing (per-asset, inverse-vol sized):
   ~8.5y test. Caveats: coarse 12-sector cross-section, price-index (dividends missing,
   returns understated), short history. None promoted; a longer or single-stock Indian
   sample is a separate, future, separately-tallied idea.
+
+---
+
+## RL-2026-07-10 - Broad Indian single-stock strategy search (factors + blends + regime switch)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** RL-2026-07-09 found nothing survived on 12 NSE sector
+  PRICE indices and named the two reasons: a coarse cross-section and missing
+  dividends. On a BROAD single-stock cross-section (Nifty 500) with TOTAL-return
+  data (Yahoo adj_close, corporate-action adjusted) and long history, the anomalies
+  best documented in Indian equities - cross-sectional momentum (strong, persistent
+  in India), low-volatility (the NSE Low-Vol-30 index has outperformed), and their
+  blend - should show detectable OOS skill. Different strategy TYPES are expected to
+  win in different SITUATIONS: momentum in risk-on trends, low-vol/defensive in
+  drawdowns, construction (ERC/HRP) for stable sizing, and a causal regime switch to
+  move between them. Deliverable = that situation->winner map + a deployable long-only
+  blend that beats Nifty net of costs OOS.
+- **Sample (locked):** universe = current Nifty 500 constituents (primary), with
+  Nifty 200 and Nifty 50 as universe-perturbation robustness. Prices = Yahoo
+  adj_close total return. Benchmark = ^NSEI (not traded) and NIFTYBEES (tradeable,
+  dividend-bearing). Groww is wired read-only for the authoritative NSE
+  universe/instrument master, F&O-shortability flags, and recent-price validation -
+  NOT as the backtest price source (Groww daily history is ~2020+ and unadjusted for
+  corporate actions). Inclusion rule: a name is kept iff listed on/before `start` and
+  >= 95% coverage of the Nifty trading calendar over [start,end], small gaps ffilled
+  <= 3 days. start = 2010-01-01; window 2010-01 -> present; **test = 2017-01-01
+  onward, touched exactly once.** cost = 20 bps/unit turnover primary (10 and 40 bps
+  as robustness). rebalance = monthly (ME) primary. SURVIVORSHIP/OLDER-LISTING bias:
+  current-membership lists + a listing filter bias results upward; disclosed and
+  mitigated by using relative/cross-sectional signals and reporting universe-breadth
+  robustness (a broader list dilutes, not removes, the bias). No free point-in-time
+  membership source exists.
+- **Preprocessing (locked):** adj_close panel per the inclusion rule; no
+  winsorization; valid corporate-action-adjusted prices kept as-is. The composite
+  BLEND and the regime switch are designed using TRAIN-window (< 2017) evidence and
+  economic priors ONLY, then FROZEN before the test window is evaluated once. Looking
+  at test-window results before freezing would convert this into in-sample fitting.
+- **Specification:**
+  1. The 32 pre-registered factors (RL-2026-07-07/08 specs, reused unchanged),
+     dollar-neutral long-short. `pairs` uses US symbols -> inapplicable, excluded
+     from the DSR trial set.
+  2. Long-only top-quintile variants of the cross-sectional signals (the deployable
+     form; single-stock cash-market shorting is F&O-only in India).
+  3. A composite blend: cross-sectionally z-scored, equal-weighted combination of the
+     economically-motivated signals selected on TRAIN evidence (priors: momentum +
+     low-vol, plus any train-robust addition), in long-short and long-only forms,
+     with causal overlays (trend filter = de-risk when Nifty < 200-day MA; vol-target
+     to 15% annualized, no leverage).
+  4. A causal regime-switch ensemble: risk-on book (momentum) when Nifty > 200-day MA,
+     risk-off book (low-vol or cash) otherwise - a pre-committed rule, not fitted to
+     which book won a slice.
+  Multiple-testing: BH-FDR (q=0.10) on test-window Sharpe t-stats + Deflated Sharpe
+  (trials = applicable strategies) over the whole family. Situations evaluated:
+  constraint (L/S vs long-only), universe (Nifty 50/200/500), cost (10/20/40 bps),
+  causal market regime (bull/bear via 200-day MA, high/low vol), and sub-periods.
+- **Predicted outcome:** Honest priors. Cross-sectional momentum is the most likely
+  to show real OOS skill in India (strongest prior); low-vol is defensive (better
+  risk-adjusted, may lag raw in bull runs); the momentum+low-vol blend should have the
+  best Sharpe of the alpha strategies; ERC/HRP give the best raw Sharpe as CONSTRUCTION
+  (not alpha), as in every prior study here. The long-only blend most likely BEATS
+  Nifty buy-and-hold net of 20 bps OOS (the primary pragmatic bar) while FEW or none
+  clear the strict Deflated Sharpe (trials-aware) bar - so the honest headline will
+  probably be "wins the deployable benchmark comparison, does not clear the strict
+  multiple-testing bar." High-turnover reversal/overnight/bollinger expected NEGATIVE
+  after 20 bps (as on the sector indices). The 200-MA regime switch expected to cut
+  drawdown materially vs static momentum (its main value is tail protection, not raw
+  Sharpe). Report every number honestly, including where a strategy does NOT win.
+
+<!-- filled in AFTER the single locked test-window evaluation -->
+- **Result:** _pending run_
+- **Conclusion:** _pending run_
 
 ---
 

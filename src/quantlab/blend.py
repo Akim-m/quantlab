@@ -80,6 +80,25 @@ def trend_overlay(book: pd.DataFrame, market: pd.Series, ma_lb: int = 200) -> pd
     return book.mul(on, axis=0)
 
 
+def market_on(market: pd.Series, ma_lb: int = 200) -> pd.Series:
+    """Causal risk-on flag: market closed above its `ma_lb` MA (known at t)."""
+    return (market > market.rolling(ma_lb).mean())
+
+
+def regime_switch(
+    risk_on: pd.DataFrame,
+    risk_off: pd.DataFrame,
+    market: pd.Series,
+    ma_lb: int = 200,
+) -> pd.DataFrame:
+    """Hold `risk_on` when the market is above its MA, else `risk_off`.
+
+    The switch is a pre-committed, causal rule (not fitted to which book won a
+    slice), so it is a deployable situation->strategy map, not hindsight."""
+    on = market_on(market, ma_lb).astype(float).reindex(risk_on.index).fillna(0.0)
+    return risk_on.mul(on, axis=0).add(risk_off.mul(1.0 - on, axis=0), fill_value=0.0)
+
+
 def vol_target_overlay(
     book: pd.DataFrame,
     returns: pd.DataFrame,

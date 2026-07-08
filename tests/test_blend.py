@@ -5,6 +5,8 @@ from quantlab.blend import (
     composite,
     long_only_topq,
     long_short,
+    market_on,
+    regime_switch,
     trend_overlay,
     vol_target_overlay,
     zscore_xs,
@@ -63,6 +65,24 @@ def test_trend_overlay_goes_to_cash_below_ma_and_is_causal():
     m2.iloc[-1] = 1e6
     t = -5
     assert trend_overlay(book, m, 50).iloc[t].equals(trend_overlay(book, m2, 50).iloc[t])
+
+
+def test_regime_switch_selects_book_by_causal_market_state():
+    px = _prices()
+    on_book = long_only_topq(px.pct_change(60), px, top=0.5)      # sums to 1
+    off_book = pd.DataFrame(0.0, index=px.index, columns=px.columns)  # cash
+    rising = pd.Series(np.linspace(100, 300, len(px)), index=px.index)
+    falling = pd.Series(np.linspace(300, 100, len(px)), index=px.index)
+    # rising market -> risk-on book held (weights sum ~1 once MA exists)
+    up = regime_switch(on_book, off_book, rising, ma_lb=50)
+    assert up.iloc[200].sum() > 0.99
+    # falling market -> risk-off (cash) held
+    down = regime_switch(on_book, off_book, falling, ma_lb=50)
+    assert down.iloc[200].abs().sum() == 0.0
+    # causal: today's allocation ignores a future market spike
+    m = pd.Series(100.0, index=px.index); m2 = m.copy(); m2.iloc[-1] = 1e6
+    assert regime_switch(on_book, off_book, m, 50).iloc[-5].equals(
+        regime_switch(on_book, off_book, m2, 50).iloc[-5])
 
 
 def test_vol_target_overlay_is_causal_and_cuts_high_vol():
