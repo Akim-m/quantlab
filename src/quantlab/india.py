@@ -47,6 +47,16 @@ def nifty200_symbols(**kw) -> list[str]:
     return nse_index_symbols("nifty200", **kw)
 
 
+def _winsorize_prices(px: pd.DataFrame, cap: float) -> pd.DataFrame:
+    """Rebuild the price panel from daily returns clipped to +/-cap.
+
+    NSE stocks mostly have +/-20% daily circuit limits, so a daily move beyond ~50%
+    is almost always a bad print / unadjusted action, not a real return. Clipping
+    bounds any single glitch's impact; disclosed as a pre-registered cleaning step."""
+    r = px.pct_change().clip(-cap, cap).fillna(0.0)
+    return px.iloc[0] * (1.0 + r).cumprod()
+
+
 def india_panel(
     start: str,
     end: str | None = None,
@@ -54,6 +64,7 @@ def india_panel(
     symbols: list[str] | None = None,
     min_coverage: float = 0.95,
     ffill_limit: int = 3,
+    ret_clip: float | None = None,
     refresh: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series, dict[str, pd.DataFrame], list[str]]:
     """Build a total-return price panel for an NSE universe.
@@ -88,6 +99,8 @@ def india_panel(
         kept.append(col)
 
     px = full[kept].reindex(cal).ffill(limit=ffill_limit).dropna()
+    if ret_clip is not None:
+        px = _winsorize_prices(px, ret_clip)
     mkt = full[BENCHMARK.upper()].reindex(px.index).ffill(limit=ffill_limit)
     ohlcv = {c: pd.DataFrame({s: data[s][c] for s in kept}).reindex(px.index).ffill(limit=ffill_limit)
              for c in ("open", "close", "high", "low", "volume")}

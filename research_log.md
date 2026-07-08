@@ -547,6 +547,53 @@ Time-series / timing (per-asset, inverse-vol sized):
   drawdown materially vs static momentum (its main value is tail protection, not raw
   Sharpe). Report every number honestly, including where a strategy does NOT win.
 
+### Frozen design (2026-07-10, from a planning pass; frozen BEFORE the single test run)
+
+Data cleaning (pre-registered): daily returns winsorized at +/-40% and the price panel
+rebuilt (ret_clip=0.40). NSE circuit limits make >40%/day almost always a bad print;
+audit found 13 such events in 277x4053, 3 of them >100% (WHIRLPOOL +570% etc.).
+Winsorizing barely moves the top strategies (dual_momentum 1.48->1.51, hrp 1.41->1.42,
+residual_momentum 0.94->0.97), so results are not glitch-driven.
+
+Benchmark: ^NSEI is price-only; primary benchmark = a TR proxy (^NSEI + 1.4%/yr dividend
+accrued daily). Crucially, alpha is ALSO measured vs the EQUAL-WEIGHT-277 book (gross
+test Sharpe 1.34 vs Nifty 0.80): any broad long book beats cap-weighted Nifty on the
+size/breadth premium, so "beats Nifty" alone is NOT signal skill - the headline must say
+whether the strategy beats EW-277 on a PAIRED active-return t-test.
+
+Frozen family (9 new trials; monthly ME, 20 bps, N500-277 primary). Long books EXCLUDE
+the low-vol/low-beta/reversal/lottery family (train+test negative) except the regime
+risk-off book:
+- LO-CORE (frozen long-only): composite{mom_12_1, sharpe_mom, resid_mom} equal ->
+  long_only_topq(top=0.2, invvol) -> trend_overlay(200d MA).
+- LO-CORE-NOOVERLAY: same, no overlay (attribution + bull book).
+- LO-EXT: add mom_6_1, off_low (=low_ratio 252d), sector_mom (mom_12_1 demeaned within
+  NSE industry); else as LO-CORE.
+- LO-ERC: top-20% by the composite, ERC-weighted (erc_weights_fast) + trend overlay.
+- LO-VT: LO-CORE book -> vol_target_overlay(target = train realized vol of no-overlay
+  book, cap=1.0).
+- REGIME: regime_switch(risk_on = no-overlay book, risk_off = 50% cash + 50% defensive
+  low-vol book, 200d MA) - tests if low-vol earns its keep ONLY conditional on bear.
+- LO-BAND: LO-CORE with hysteresis banded rebalance (enter rank<=15%, hold<=35%); primary
+  cell = the 40 bps column.
+- LS-CORE (frozen long-short): composite{resid_mom, sharpe_mom, mom_12_1} equal ->
+  long_short(); judged as factor evidence, NOT vs Nifty.
+- LS-RESID2: LS-CORE with weights resid_mom:2, sharpe_mom:1, mom_12_1:1 (ex-ante deviation
+  justified by resid_mom's train t=2.9).
+
+Success criterion (frozen). PRIMARY WIN (LO-CORE): net test Sharpe > Nifty-TR proxy AND
+paired monthly active-return t >= 2 AND beats benchmark in >=2/3 costs and >=2/3 universes
+AND (positive active return in both bull and bear slices OR better maxDD than Nifty).
+STRICT verdict (co-reported, expected to fail, not spun): BH-FDR q<0.05 within the 9-trial
+family AND DSR>0.95 at the CUMULATIVE India trial count (prior 32 + 9 = 41). Noise floor:
+Sharpe SE ~0.3-0.45, so gaps < ~0.4 are unrankable.
+
+Disclosed biases: (1) survivorship + older-listing bias UP, worst in N500 - N50 is the
+honesty anchor; (2) OOS window is SECOND-USE for these families - graded via cumulative
+DSR N=41 and stated plainly; (3) cash earns 0, biasing overlay/regime books DOWN ~6.5%/yr
+T-bill; (4) 200MA at month-ends exits AFTER the Feb-Mar 2020 crash - 2020 reported
+explicitly.
+
 <!-- filled in AFTER the single locked test-window evaluation -->
 - **Result:** _pending run_
 - **Conclusion:** _pending run_

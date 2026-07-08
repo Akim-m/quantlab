@@ -120,11 +120,12 @@ def run(
     cost_bps: float = COST_BPS,
     index: str = "nifty500",
     label: str | None = None,
+    ret_clip: float | None = 0.40,
     hypothesis_ref: str = "RL-2026-07-10",
     refresh: bool = False,
 ) -> pd.DataFrame:
     label = label or index.upper()
-    px, mkt, ohlcv, kept = india_panel(start=start, index=index, refresh=refresh)
+    px, mkt, ohlcv, kept = india_panel(start=start, index=index, ret_clip=ret_clip, refresh=refresh)
     print(f"{label}: {px.shape[1]} stocks x {len(px)} days, "
           f"{px.index[0].date()} -> {px.index[-1].date()}; test from {split}, cost {cost_bps}bps")
 
