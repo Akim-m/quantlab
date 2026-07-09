@@ -1376,8 +1376,23 @@ explicitly.
   not 20 bps.
 
 <!-- filled in when the archive program is evaluated -->
-- **Result:**
-- **Conclusion:**
+- **Result (program go-live, 2026-07-09):** collector built, tested (7 tests), and
+  wired into the daily snapshot. First pass archived the FULL surviving retention
+  window: 101/101 symbols, 0 failures, 454,492 five-minute bars spanning
+  2026-04-13→2026-07-09 (60 sessions × 75 bars/session exactly; orchestrator
+  spot-verified bar counts, dedupe, monotonicity, no impossible bars). Measured
+  retention floor ~87 days. Probe fact: index candles use trading_symbol 'NIFTY'
+  (the NSE_ prefix is get_ltp-only); index bars carry volume=None. First-pass
+  runtime ~27 min (latency-bound, ~2s/request serial — the registered ~90s
+  estimate was wrong); daily incremental runs ~3–4 min. Audit-row undercount on
+  the split first run disclosed (247,492 logged vs 454,492 on disk — the run
+  timed out mid-pass and the incremental design self-healed on re-run).
+- **Durability (owner-directed, 2026-07-09):** the archive is git-backed in the
+  PRIVATE repo github.com/Akim-m/quantlab-intraday (data/raw/intraday is itself
+  a git repo; the main repo still ignores it). Daily snapshot auto-commits and
+  pushes new bars there — interim home until the owner picks a permanent store.
+- **Conclusion:** live and accruing. ORB/VWAP registrations unlock ≈2027-07
+  (≥12 months of bars), per the locked rule above.
 
 ---
 

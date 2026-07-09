@@ -70,9 +70,13 @@ the deployed binary gate — treat further overlay tweaks as low-prior.
 - RL-18 paper short straddle (NIFTY weekly ATM, LTP marks) — read at 126 days.
 - RL-22 forward evals: E1 trend keeps promotion; E2 gold_lowbeta vs deployed
   (Sharpe-diff z>1 + maxDD); E3 invvol blend from ledgers (Sharpe-diff z>1).
-- RL-25 intraday 5-min bar archive (NIFTY + nifty100) — Groww retains only ~90
-  trailing days, so the archive is the ONLY path to future ORB/VWAP studies
-  (own registrations, no read before ≥12 months of bars, realistic intraday costs).
+- RL-25 intraday 5-min bar archive (NIFTY + nifty100) — LIVE since 2026-07-09
+  with the full ~87-day retention window rescued (454,492 bars). Groww retains
+  only ~90 trailing days, so the archive is the ONLY path to future ORB/VWAP
+  studies (own registrations, no read before ≥12 months of bars, realistic
+  intraday costs). Durability: `data/raw/intraday/` is its own git repo pushing
+  to the PRIVATE github.com/Akim-m/quantlab-intraday (auto-commit+push is a
+  daily snapshot leg); the main repo still git-ignores the directory.
 
 ## 4. Daily operation (the owner's one command)
 

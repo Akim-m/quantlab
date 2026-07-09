@@ -14,8 +14,13 @@ Running log of research + build state. Newest first.
   return) but maxDD worsens 2.4pts and LW z ≈ 0 — re-entering receding panic
   buys the recovery AND its residual drawdown. Third overlay study confirming
   the deployed binary gate is hard to improve. 13-episode power disclosure.
-- IN PROGRESS (Opus): RL-2026-07-25 intraday 5-min bar archive (first
-  ~90-day pass + snapshot.py leg).
+- DONE: RL-2026-07-25 — intraday 5-min bar archive LIVE. First pass rescued
+  the full surviving window: 101/101 symbols, 454,492 bars, 2026-04-13→07-09
+  (60 sessions × exactly 75 bars; orchestrator spot-verified). Retention floor
+  measured ~87 days; first pass ~27 min (latency-bound), dailies ~3-4 min.
+  Durability per owner: PRIVATE repo github.com/Akim-m/quantlab-intraday
+  (data/raw/intraday is its own git repo; auto-push wired as a snapshot leg).
+  ORB/VWAP registrations unlock ≈2027-07.
 
 ## 2026-07-09 (close) — forward program v2 (RL-2026-07-22)
 

@@ -20,7 +20,9 @@ costs the other book its snapshot.
 """
 
 import os
+import subprocess
 import sys
+from datetime import date
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
@@ -29,7 +31,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
-from quantlab import fno_collect, live_paper, paper_options
+from quantlab import fno_collect, intraday_collect, live_paper, paper_options
 
 refresh = "--no-refresh" not in sys.argv[1:]
 
@@ -42,11 +44,23 @@ def step(label, fn):
         print(f"[{label}] FAILED, continuing: {type(e).__name__}: {e}")
 
 
+def archive_push():
+    git = ["git", "-C", os.path.join(ROOT, "data", "raw", "intraday")]
+    subprocess.run(git + ["add", "-A"], check=True)
+    if subprocess.run(git + ["diff", "--cached", "--quiet"]).returncode == 0:
+        print("no new bars")
+        return
+    subprocess.run(git + ["commit", "-m", f"archive {date.today().isoformat()}"], check=True)
+    subprocess.run(git + ["push", "origin", "main"], check=True)
+
+
 step("REGIME snapshot", lambda: live_paper.run(refresh=refresh))
 step("F&O L/S sleeve snapshot", lambda: live_paper.run_ls(refresh=False))
 step("TREND sleeve snapshot", lambda: live_paper.run_trend(refresh=False))
 step("gold_lowbeta variant snapshot", lambda: live_paper.run_gl(refresh=False))
 step("F&O daily collect", fno_collect.collect)
+step("Intraday 5m archive", intraday_collect.collect)
+step("Archive commit + push", archive_push)
 step("PAPER options mark", paper_options.snapshot)
 step("REGIME forward record", lambda: live_paper.forward_track())
 step("F&O L/S forward record",
