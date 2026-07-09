@@ -93,21 +93,25 @@ def current_book(start: str = "2010-01-01", index: str = "nifty500",
                 nsei_prev_close=nsei_prev_close)
 
 
-def fetch_ltp(exchange_symbols: list[str]) -> tuple[dict[str, float], str | None]:
-    """Batched read-only Groww LTP. Returns (prices_by_symbol, error_or_None).
+LTP_BATCH = 50  # Groww caps get_ltp at 50 symbols per request
 
-    Never raises: a Groww/network failure yields an empty dict plus the reason, so
-    the caller records a book-only snapshot instead of crashing the daily run.
+
+def fetch_ltp(exchange_symbols: list[str]) -> tuple[dict[str, float], str | None]:
+    """Batched read-only Groww LTP (<=50 symbols/call). Returns (prices, error_or_None).
+
+    Never raises: a Groww/network failure yields whatever was fetched so far plus the
+    reason, so the caller records a (partial) snapshot instead of crashing the run.
     """
-    if not exchange_symbols:
-        return {}, None
-    try:
-        payload = gc.call("get_ltp", exchange_trading_symbols=tuple(exchange_symbols),
-                          segment=SEGMENT)
-    except Exception as e:  # auth/entitlement/network/rate — all non-fatal here
-        return {}, f"{type(e).__name__}: {e}"
-    out = {s: p for s in exchange_symbols
-           if (p := _price(payload.get(s))) is not None}
+    out: dict[str, float] = {}
+    for i in range(0, len(exchange_symbols), LTP_BATCH):
+        chunk = exchange_symbols[i:i + LTP_BATCH]
+        try:
+            payload = gc.call("get_ltp", exchange_trading_symbols=tuple(chunk), segment=SEGMENT)
+        except Exception as e:  # auth/entitlement/network/rate — all non-fatal here
+            return out, f"{type(e).__name__}: {e}"
+        for s in chunk:
+            if (p := _price(payload.get(s))) is not None:
+                out[s] = p
     return out, None
 
 
