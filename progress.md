@@ -16,7 +16,12 @@ Running log of research + build state. Newest first.
 - DONE: RL-2026-07-20 — turn-of-month: NEGATIVE as predicted-likely (verified
   to the digit). Effect real in sign (9.4 vs 4.2 bps/day) but t=1.13 (ns);
   TOM book SR 0.44 vs B&H 0.94 at 10 bps, collapses at 20. Graveyard.
-- IN PROGRESS (Opus): RL-2026-07-21 vol-managed overlay on the deployed book. `handoff.md` is the operating
+- DONE: RL-2026-07-21 — vol-managed overlay: NEGATIVE (verified to the digit).
+  Frozen 10%/63d; scaled SR 1.737 < baseline 1.865, paired-t −5.4; maxDD
+  better (+6.7pts) but ~17pts/yr return given up; cost drag NEGATIVE so costs
+  exonerated — the binary overlay already harvests vol-timing. Graveyard.
+  Wave complete: 12 studies resolved (2 promotions, 8 negatives, 2 forward
+  programs), family tally ~80 trials. `handoff.md` is the operating
 setup; `research_log.md` is the study record (truth).
 
 ## 2026-07-09 — session: forward paper-track hardening (handoff thread #1)

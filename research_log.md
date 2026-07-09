@@ -1203,8 +1203,23 @@ explicitly.
   wash).
 
 <!-- filled in AFTER the run -->
-- **Result:**
-- **Conclusion:**
+- **Result:** (run 2026-07-09, `volmgmt_study.py`; orchestrator re-verified all
+  decision numbers independently — exact match.) Base reproduced exactly
+  (1.865, hard-asserted in-module). σ̂ from a FIXED causal reference (the
+  unscaled book's gross returns — not the scaled book, no circularity;
+  gross-vs-net choice disclosed). TRAIN froze σ_target 10% / 63d window
+  (train SR 1.529 over the other three). Test read: scaled SR 1.737 vs
+  baseline 1.865 (dSR −0.128), ann 18.8% vs 35.7% (~17 points given up),
+  maxDD −20.5% vs −27.2% (+6.7 points better), paired-t ≈ −5.4 at every cost.
+  Incremental cost drag NEGATIVE (−0.12…−0.50%/yr — de-levering shrinks
+  trades), so costs are exonerated: the loss is pure de-levering of a
+  positive-drift book. deploy = FALSE everywhere.
+- **Conclusion:** failed — the SR-rises thesis is rejected out of sample, and
+  the pre-registered redundancy risk realized worse than a wash: the binary
+  (200MA OR VIX) overlay already harvests the vol-timing gain, and stacking a
+  continuous vol-target on top only de-levers the book's drift. Moreira–Muir
+  does not stack on a regime-switched book here. +4 variants to the family
+  (~80); DSR verdict unchanged.
 
 ---
 
