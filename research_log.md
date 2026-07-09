@@ -684,9 +684,12 @@ explicitly.
   at 20 (~130%/wk turnover). Long-only short-horizon tilts show high net Sharpe (0.8-1.1) but
   it is pure market beta - every one has NEGATIVE paired active-t vs EW. Faster 2-day reversal
   stronger gross but hopeless turnover; overnight-intraday negative at all costs; nifty50
-  (5 bps) rescues none. 0 of 13 clear BH-FDR + DSR. THE ONE LEAD: reversal's edge concentrates
-  in the 200-MA BEAR regime (net@10 bear Sharpe ~1.0-1.35) - flagged as the next pre-registered
-  trial (regime-conditional reversal), deliberately not run to avoid p-hacking the frozen family.
+  (5 bps) rescues none. 0 of 13 clear BH-FDR + DSR. THE ONE LEAD, then TESTED: reversal's edge
+  concentrates in the 200-MA BEAR regime. Gating reversal to bear-only (Nifty < 200MA, ~21% of
+  test days) flips it from net@10 -0.43 to **+0.32** (resid-reversal +0.38), but it is
+  ~break-even at realistic 20 bps (-0.11) and only +1.3%/yr - better than always-on, NOT
+  deployable standalone; at best a small uncorrelated bear-market sleeve. Short-term Indian
+  equity is cost-gated: nothing survives 20 bps as a standalone winner.
 - **Live paper harness (`live_paper.py`): READ-ONLY, built and verified** (only get_ltp via the
   order-refusing wrapper; method-spy test). As of 2026-07-09 the strategy is risk-OFF (^NSEI
   24,014 vs 200d MA 24,853), 50% cash + defensive book. Groww live/data calls currently return
