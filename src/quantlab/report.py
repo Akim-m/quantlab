@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import live_paper
+from . import live_paper, xasset_trend
 from .backtest import backtest_weights
 from .bear_sleeve import base_book
 from .blend import composite, fno_long_short
@@ -217,6 +217,10 @@ def graveyard_section() -> str:
         "| Short-term reversal family (13 daily/weekly books) | RL-2026-07-11 | Real gross edge (~0.67 SR) but ~130%/wk turnover; 0 of 13 survive 20 bps. Cost-gated. |",
         "| Bear-only reversal sleeve on the REGIME book | RL-2026-07-13 | Wash-to-drag at 20 bps (ΔSR −0.006), worse combined drawdown; diversification held, returns didn't. Failed. |",
         "| 52-week-strength long book (George-Hwang) | RL-2026-07-14 | 0.94 active-return correlation with momentum, double the standalone drawdown; redundant. Not promoted. |",
+        "| Risk-off sleeve — low-beta defensive half instead of cash | RL-2026-07-16 | Return lift is real and robust (combined SR 1.91, +42%/yr, paired-t +1.7) but maxDD worsens 2–5 points, breaching the 2-point cap at every cost. Book keeps cash. |",
+        "| Three-book blend (REGIME + F&O L/S + trend sleeve) | RL-2026-07-19 | Frozen inverse-vol blend: SR 1.78 vs REGIME 1.87 at half the drawdown (−12.7% vs −27.2%) but a third of the return — a frontier alternative, not an upgrade; failed its (disclosed) mis-specified return-level bar. |",
+        "| Turn-of-month tilt on NIFTYBEES | RL-2026-07-20 | Real in sign — window days earn ~2.2× the off-window daily return — but noise in significance (two-sample t 1.13); TOM-only SR 0.44 trails buy-and-hold 0.94. Not a strategy. |",
+        "| Continuous vol-target overlay on the REGIME book | RL-2026-07-21 | Stacking a vol-target on the binary (200MA OR VIX) overlay only de-levers a positive-drift book: SR falls 1.865→1.737, return 35.7%→18.8%. The regime overlay already owns the vol-timing. |",
         "| Cross-sectional anomaly family (32 factors, US + NSE) | RL-2026-07-07/08/09 | 0 clear the Deflated Sharpe bar; the low-vol/low-beta family actively hurt in the high-beta decade. |",
         "",
         "**Standing caveats on the deployed books (do not overclaim):**",
@@ -246,7 +250,11 @@ def _load() -> dict:
 
         nsei, _tr, ew = benchmarks(px, mkt, COST_BPS)
 
-    return {"regime": regime, "ls": ls, "nsei": nsei, "ew": ew, "mkt": mkt,
+        etf_px = xasset_trend.etf_panel()
+        trend = xasset_trend.sleeve_ret(etf_px, xasset_trend.FROZEN_GATE,
+                                        xasset_trend.FROZEN_WEIGHTING, COST_BPS)
+
+    return {"regime": regime, "ls": ls, "trend": trend, "nsei": nsei, "ew": ew, "mkt": mkt,
             "last_date": px.index[-1], "n_stocks": px.shape[1],
             "n_shortable": len(shortable), "n_overlap": len(set(px.columns) & shortable)}
 
@@ -275,6 +283,16 @@ def render(d: dict, forward_paths: tuple[str, str, str] | None = None) -> str:
     series = {"REGIME (long-only)": test(d["regime"]), "F&O L/S sleeve": test(d["ls"]),
               "Nifty (^NSEI)": nsei_t, "EW-277": test(d["ew"])}
     rows = [(name, book_metrics(s, nsei_t)) for name, s in series.items()]
+    trend_bullet = ""
+    if "trend" in d:
+        rows.insert(2, ("Multi-asset trend sleeve (promoted, not yet in the daily paper-track)",
+                        book_metrics(test(d["trend"]), nsei_t)))
+        trend_bullet = (
+            "\n- **Multi-asset trend sleeve** *(promoted RL-2026-07-17, not yet in the daily "
+            "paper-\n  track)* — five NSE ETFs (NIFTYBEES / JUNIORBEES / BANKBEES / GOLDBEES / "
+            "MON100), each\n  leg long its inverse-vol share while its own 12-1 trend is up, else "
+            "cash. A low-\n  correlation diversifier to the equity book, promoted as a blend "
+            "candidate — not one of\n  the two deployed books.")
     years = list(range(int(SPLIT[:4]), d["last_date"].year + 1))
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -299,7 +317,7 @@ monthly rebalance, N500-{d['n_stocks']} total-return universe.
 - **F&O L/S sleeve** — residual-momentum dollar-neutral long-short with the short leg
   restricted to F&O-shortable single stocks ({d['n_overlap']}/{d['n_stocks']} of the
   universe overlaps the {d['n_shortable']} shortable names). Implementable market-neutral
-  book (RL-2026-07-12).
+  book (RL-2026-07-12).{trend_bullet}
 
 {deployed_table(rows)}
 
