@@ -52,9 +52,16 @@ setup; `research_log.md` is the study record (truth).
   deployed books rebuilt live (REGIME 1.865, L/S 0.846 — reproduce logged
   values exactly), per-year + 2020-crash + risk-on/off slices, forward-track
   status, graveyard. Documents-are-code: numbers recomputed, never typed.
-- IN PROGRESS (Opus x2): RL-2026-07-16 risk-off sleeve (cash vs gold vs
-  low-beta); RL-2026-07-17 multi-asset ETF trend sleeve. QUEUED: RL-2026-07-18
-  paper options book (pre-registered, forward-only).
+- DONE: RL-2026-07-16 — risk-off sleeve: FAILED the bar (near-miss), verified
+  to the digit. TRAIN froze lowbeta; test: SR 1.865→1.913, paired-t robustly
+  >1, but maxDD worsens 2.2–4.8pts — breaches the 2pt cap at every cost. Book
+  keeps CASH in risk-off. Gold-only HURT (stress-bid thesis wrong). 50/50
+  gold+lowbeta would have passed but wasn't the train winner — refused
+  post-hoc switch (protocol). Flagged for future forward-data confirmation.
+  Ledger wart: 3 stale RL-16 rows (frozen_variant=gold placeholder);
+  authoritative rows = frozen_variant=lowbeta.
+- IN PROGRESS (Opus x2): RL-2026-07-17 multi-asset ETF trend sleeve;
+  RL-2026-07-18 paper NIFTY short-straddle harness (forward-only).
 - DONE: RL-2026-07-15 — F&O forward-collection program. Measured: expired
   contracts unresolvable → basis/PCR/IV are FORWARD-ONLY; hypotheses (H1 basis
   x-section, H2 PCR extremes, H3 IV skew) pre-registered BEFORE day-one data;

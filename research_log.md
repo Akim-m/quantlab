@@ -966,8 +966,28 @@ explicitly.
   deployed book > 1 AND maxDD not worse by more than 2 points, robust at 10/40 bps.
 
 <!-- filled in AFTER the run -->
-- **Result:**
-- **Conclusion:**
+- **Result:** (run 2026-07-09, `riskoff_sleeve.py`; orchestrator re-verified the
+  frozen-variant decision numbers independently — exact match.) Base/cash variant
+  reproduces the deployed book exactly (1.865/35.74%/−27.18%). TRAIN froze
+  `lowbeta` (train combined SR 1.599 > gold_lowbeta 1.462 > cash 1.284 > gold
+  1.136). Test read (all four PRE-SPECIFIED variants shown for disclosure; the
+  verdict binds ONLY to the frozen one): frozen lowbeta combined SR 1.913
+  (+42.1%/yr), paired-t vs deployed +1.83/+1.69/+1.41 at 10/20/40 bps — the
+  return lift is real and robust — but maxDD worsens 2.2/3.1/4.8 points,
+  breaching the 2-point cap at EVERY cost. **deploy = FALSE.** Attribution
+  (transparent, not acted on): gold-only HURT (SR 1.836, maxDD −32%; its 2020/
+  2022 own-drawdowns swamped the predicted stress bid — the prediction's gold
+  thesis was wrong); the 50/50 gold_lowbeta would have cleared the bar (t 2.04,
+  dMaxDD −0.4pt) but was NOT the train winner — adopting it post-hoc would be
+  iterating on the hold-out, so the fail verdict stands. Ledger note: 3 stale
+  RL-16 rows in log.jsonl from a placeholder first run (frozen_variant=gold);
+  authoritative rows carry frozen_variant=lowbeta.
+- **Conclusion:** failed the pre-registered bar (near-miss) — the honest ~40%
+  outcome. Low-beta in the defensive half buys +6%/yr at the price of the very
+  drawdown protection the overlay exists for; the book keeps CASH as its risk-off
+  asset. gold_lowbeta is a legitimate candidate for a FUTURE, separately
+  registered confirmation on forward data only — flagged, not promoted. +4
+  disclosed variants to the family tally (~64); DSR verdict unchanged.
 
 ---
 
