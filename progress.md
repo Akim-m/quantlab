@@ -67,7 +67,12 @@ setup; `research_log.md` is the study record (truth).
   decimal-shift prints 2019-12-19/20 on the ETFs (129→13, 33.6→0.34); Groww
   shows ~130/33.6 → prints false, causal spike-filter repair justified.
   Follow-up (not yet registered): portfolio-blend study REGIME+L/S+trend.
-- IN PROGRESS (Opus): RL-2026-07-18 paper NIFTY short-straddle harness.
+- DONE: RL-2026-07-18 — paper NIFTY short-straddle harness LIVE (verified:
+  ledger arithmetic hand-checked). First position 2026-07-09: short 24000
+  straddle exp 07-14, credit 264.65 x65; first mark −884 (premium rose on the
+  day's dip — the left tail, honestly recorded from day one). Evaluation
+  locked at 126 days. `scripts/snapshot.py` now runs SIX guarded legs feeding
+  FOUR ledgers (REGIME, L/S, fno_daily, paper_options). Suite 215.
 - DONE: RL-2026-07-15 — F&O forward-collection program. Measured: expired
   contracts unresolvable → basis/PCR/IV are FORWARD-ONLY; hypotheses (H1 basis
   x-section, H2 PCR extremes, H3 IV skew) pre-registered BEFORE day-one data;
