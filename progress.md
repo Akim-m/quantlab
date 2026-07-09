@@ -1,6 +1,20 @@
 # Progress
 
-Running log of research + build state. Newest first. `handoff.md` is the operating
+Running log of research + build state. Newest first.
+
+## 2026-07-09 (late) — RL-19 blend + new study wave
+
+- DONE: RL-2026-07-19 — three-book blend: FAILED the locked bar (verified to
+  the digit), and the bar itself was MIS-SPECIFIED — a risk-reduction thesis
+  judged by a return-level paired-t is unpassable by construction. Lesson
+  graduated to protocol.md. Honest reading: blend SR 1.78 ≈ REGIME 1.87 at
+  HALF the drawdown (−12.7% vs −27.2%) and a third of the return — a frontier
+  alternative, not an upgrade; formal risk-adjusted comparison deferred to a
+  future forward-data registration. Verdict binds: deploy=FALSE.
+- Orphans resolved: ensemble.py/test_ensemble.py archived into git history
+  (d3d1481) then removed; tree clean.
+- IN PROGRESS (Opus x2): RL-2026-07-20 turn-of-month (short-term, cost-light);
+  RL-2026-07-21 vol-managed overlay on the deployed book (long-term). `handoff.md` is the operating
 setup; `research_log.md` is the study record (truth).
 
 ## 2026-07-09 — session: forward paper-track hardening (handoff thread #1)

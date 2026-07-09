@@ -77,3 +77,9 @@ Source: *A Backtesting Protocol in the Era of Machine Learning* (Arnott, Harvey,
 - Incentives should reward sound methodology.
 - Failed experiments are expected.
 - Monitor delegated research to avoid confirmation bias.
+- The pre-registered bar must be stated in the thesis's own idiom: a
+  risk-reduction thesis cannot be judged by a return-level test (a
+  diversifying blend that halves drawdown will always fail a paired-t on
+  mean return — receipt: RL-2026-07-19). When a bar is later found
+  mis-specified, the frozen verdict still binds; the fix is a NEW
+  registration on forward data, never a re-read under a new bar.

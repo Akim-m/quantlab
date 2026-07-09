@@ -1104,6 +1104,94 @@ explicitly.
   robust at 10/40 bps. Honest prior ~50% — REGIME's own Sharpe is a high hurdle.
 
 <!-- filled in AFTER the run -->
+- **Result:** (run 2026-07-09, `blend_portfolio.py`; orchestrator re-verified the
+  frozen rule's weights and all decision numbers independently — exact match.)
+  All three books reproduced their frozen headlines (1.865 / 0.846 / 1.05).
+  TRAIN froze `invvol` (weights regime 0.21 / L/S 0.48 / trend 0.31; train SR
+  1.564 over erc 1.561, thirds 1.512, regime-alone 1.290). Test read @20 bps:
+  blend SR 1.781, ann +13.3%, maxDD **−12.65%** vs REGIME-alone 1.865 / +35.7% /
+  −27.18%. maxDD half of the bar PASSES massively (+14.5 points shallower,
+  ~2x the predicted improvement); paired-t half FAILS hard (−4.83 at 20 bps,
+  −4.90/−4.70 at 10/40) because the blend gives up ~60% of REGIME's return
+  level. **deploy = FALSE at all costs** — the frozen verdict binds.
+- **Conclusion:** failed the locked bar — AND the bar was MIS-SPECIFIED, which
+  is this study's real lesson (now in protocol.md): the registration predicted
+  a LOWER return (that's what diversification does) yet demanded a paired-t on
+  mean return > 1 — a risk-reduction thesis judged by a return-level test is
+  unpassable by construction. The verdict stands (no post-hoc bar-switching);
+  the honest reading of the data is that the blend is a DIFFERENT point on the
+  frontier, neither dominated nor dominating: Sharpe ≈ REGIME (1.78 vs 1.87)
+  at half the drawdown and a third of the return — a legitimate alternative
+  for a risk-averse allocation, not an upgrade. Any formal risk-adjusted
+  comparison (Sharpe-difference test, vol-matched idiom) belongs to a NEW
+  registration evaluated on FORWARD data, not a re-read of this window.
+  +4 sizing rules to the family tally (~72). DSR verdict unchanged.
+
+---
+
+## RL-2026-07-20 - Turn-of-month effect on the Indian index (short-term, cost-light)
+
+- **Date (pre-registration):** 2026-07-09
+- **Economic hypothesis:** Equity returns concentrate around month boundaries
+  (documented in US/global data since Ariel 1987; in India plausibly AMPLIFIED by
+  structural month-start flows: SIP auto-debits cluster in the first trading days,
+  plus institutional window-dressing at month-end). Unlike the cost-gated
+  short-term graveyard (reversal ~130%/wk turnover), a turn-of-month book trades
+  ~24 one-way legs a YEAR on a liquid index ETF — the cost tax cannot kill it by
+  construction; the only question is whether the concentration is real out of
+  sample.
+- **Sample (locked):** NIFTYBEES.NS adj_close (total-return, tradeable; cache to
+  2009, through the ETF spike-repair from RL-2026-07-17), TRAIN 2010→2016-12-31,
+  TEST 2017-01-01→now, ONE read. Cost 10 bps per side headline for the index ETF
+  (5/20 sensitivity).
+- **Specification:** hold the ETF only over the turn-of-month window [last N
+  trading days of the month, first M of the next], cash (0) otherwise. Exactly
+  four locked (N, M) variants: (3,2), (2,3), (1,3), (3,1). ONE chosen on TRAIN
+  Sharpe, frozen, one test read. Diagnostics reported alongside the strategy
+  read: mean daily return inside vs outside the frozen window with a
+  two-sample t (the effect itself), and Sharpe vs buy-and-hold.
+- **Predicted outcome:** the effect exists but has weakened globally post-2000;
+  honest prior: TOM window captures 50–80% of buy-and-hold's return in ~25% of
+  the days → TOM-only test Sharpe 0.9–1.3 vs B&H ~0.8, inside-vs-outside t
+  1.5–2.5. Promotion bar: TOM Sharpe > B&H Sharpe AND inside-outside t ≥ 2 at
+  10 bps, surviving 20 bps. A miss is a valid negative (global evidence says
+  decay is likely).
+
+<!-- filled in AFTER the run -->
+- **Result:**
+- **Conclusion:**
+
+---
+
+## RL-2026-07-21 - Vol-managed (continuous vol-target) overlay on the deployed book
+
+- **Date (pre-registration):** 2026-07-09
+- **Economic hypothesis:** Moreira–Muir (2017): scaling exposure by inverse
+  realized variance raises Sharpe for momentum-type strategies, because
+  volatility is highly persistent while expected return is not proportional to
+  it. The deployed book's regime overlay is BINARY (fully in / cash); a
+  CONTINUOUS vol-target is a different mechanism that also de-risks smoothly
+  into vol clusters instead of at a threshold. Applied ON TOP of the deployed
+  book (scale its daily weights), it should shave drawdown/vol more than return.
+- **Sample (locked):** the deployed REGIME book rebuilt via its frozen
+  construction; TRAIN 2010→2016-12-31, TEST 2017-01-01→now, ONE read; 20 bps
+  headline (10/40) — the daily scale-factor trading is REAL turnover and must be
+  costed through backtest_weights.
+- **Specification:** scaled weights w_t · s_t with s_t = min(1, σ_target /
+  σ̂_t) (leverage capped at 1 — long-only, implementable), σ̂_t = trailing
+  realized vol of the BOOK's own returns, prior-day information only. Exactly
+  four locked variants: σ_target ∈ {10%, 15%} × estimator window ∈ {21d, 63d}.
+  ONE chosen on TRAIN Sharpe, frozen, one test read vs the deployed baseline:
+  Sharpe, ann, maxDD, paired-t of the daily difference, plus the turnover cost
+  drag attributable to scaling.
+- **Predicted outcome:** test SR 1.87 → 1.95–2.10 with maxDD improving 3–6
+  points and ann return giving up 3–8 points; the scaling turnover drag ~0.5–1%/
+  yr. Deployment bar (same family as RL-16/19): paired-t > 1 AND maxDD
+  better-or-equal, robust at 10/40 bps. Honest risk: the binary overlay already
+  harvests most of the vol-timing gain, leaving this redundant (~40% prior of a
+  wash).
+
+<!-- filled in AFTER the run -->
 - **Result:**
 - **Conclusion:**
 
