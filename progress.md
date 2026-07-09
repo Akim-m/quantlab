@@ -48,6 +48,19 @@ setup; `research_log.md` is the study record (truth).
   paired-t +0.58 < 1). Redundant with momentum; not promoted. Receipt: the
   train-rejected gh_high looked better on test but with negative paired-t —
   freeze prevented test-peeking.
+- DONE: RL-2026-07-15 — F&O forward-collection program. Measured: expired
+  contracts unresolvable → basis/PCR/IV are FORWARD-ONLY; hypotheses (H1 basis
+  x-section, H2 PCR extremes, H3 IV skew) pre-registered BEFORE day-one data;
+  first read locked at 126 collection days. Collector `fno_collect.py` live:
+  day-one row 2026-07-09 — 210/210 cash, 210/210 fut1, 208 fut2, chain OK
+  (NIFTY PCR 0.876, ATM IV 11.9, skew +4.0; median ann. basis +5.0%/yr).
+  Orchestrator re-verified stored basis arithmetic (matches at stored 4-dp
+  precision) and PCR against an independent chain pull. Groww API surface
+  fully audited → handoff.md (GrowwFeed websocket, quote depth/OI, v2 candle
+  API inferior, MCX contract-level only). Suite 184 green.
+- DONE: `scripts/snapshot.py` unified — one command runs REGIME + F&O L/S
+  snapshots and prints both forward records (guarded legs); F&O collector
+  being folded in as a third leg.
 - DONE: RL-2026-07-13 — bear-only reversal sleeve: NEGATIVE (wash-to-drag),
   the pre-registered coin-flip's honest side (verified by orchestrator to the
   digit). All 6 configs below base on TRAIN at 20 bps; frozen least-drag

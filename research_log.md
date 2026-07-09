@@ -900,6 +900,41 @@ explicitly.
 
 ---
 
+## RL-2026-07-15 - F&O forward-collection program (basis / PCR / IV) — forward-only
+
+- **Date (pre-registration):** 2026-07-09
+- **Data feasibility (measured, this account):** live F&O contracts serve daily candles
+  over their ~3-month life; EXPIRED contracts are not resolvable via the API (symbol
+  validation against the live master). Therefore NO historical basis/IV/PCR series can
+  be reconstructed — these signals are FORWARD-ONLY on this stack. The deliverable is
+  a daily read-only collector (`fno_collect.py` → `experiments/fno_daily.jsonl`) that
+  starts the dataset now, plus the hypotheses below, pre-registered BEFORE any data
+  exists so the eventual first read is clean.
+- **Collected daily (read-only, ≤7 req/s):** per F&O underlying (~210): cash LTP,
+  current- and next-month futures LTP → annualized basis; NIFTY option chain (nearest
+  expiry): OI put-call ratio, ATM IV, and a fixed-moneyness IV skew.
+- **Pre-registered forward hypotheses (first read ONLY after ≥126 trading days of
+  collection; evaluation protocol locked now):**
+  - **H1 basis cross-section:** stocks in deep backwardation (most negative annualized
+    basis) are crowded shorts / hedged names; long bottom-decile basis vs short
+    top-decile, monthly, 20 bps — predicted small positive spread (~3-6%/yr gross),
+    market-neutral.
+  - **H2 NIFTY PCR extremes:** OI-PCR above its trailing 90th percentile is a
+    contrarian risk-ON signal (hedging washout). Predicted: modest timing value,
+    additive to the 200MA/VIX overlay or nothing; a null is likely and acceptable.
+  - **H3 IV skew:** steepening index skew (puts richening vs calls) leads drawdowns;
+    predicted weak-positive as a de-risking confirm, redundant with VIX ~50% likely.
+- **Evaluation (locked):** each hypothesis gets ONE read at the 126-day mark (then
+  quarterly), paired against the deployed overlay where applicable; BH-FDR across the
+  three; no peeking before the mark. Collection gaps (missed days) are tolerated and
+  logged, never backfilled.
+
+<!-- filled in AFTER the first 126-day read -->
+- **Result:**
+- **Conclusion:**
+
+---
+
 ## Template
 
 ```markdown

@@ -43,6 +43,16 @@ is the operating setup + current state + what to do next.
   daily candles back to ~2002-07 (≤730d/request), split/bonus-adjusted but NOT
   dividend/demerger-adjusted; intraday depth ~90 days (60min ≤90d, 10min ≤30d,
   5min ≤15d, 1min ≤7d per request).
+  Full API surface (audited 2026-07-09): batched `get_ltp`/`get_ohlc` (≤50/call);
+  `get_quote` (per-symbol: 5-level depth, total buy/sell qty, circuit limits, volume,
+  OI fields on derivatives); option chain / greeks / expiries / contracts (live
+  contracts only — expired unresolvable); instrument master (lot/tick/freeze);
+  `GrowwFeed` websocket (streaming LTP, market depth, index values); v2
+  `get_historical_candles` adds weekly/monthly but caps ALL intervals at 180d/request
+  (v1 is strictly better for bulk); MCX/commodity + currency segments exist in the
+  master (contract-level, forward-only, unexplored). Account methods (holdings/
+  positions/margin) are read-only but irrelevant to research. Order methods refused
+  by `groww_client.call`, permanently.
 
 ## 3. Research state — what's been found
 
@@ -91,8 +101,10 @@ turnover; even bear-only reversal is ~break-even at 20 bps. See `short_term*.py`
    futures basis carry. Measures how much shortability destroys the 0.86 Sharpe.
 3. **F&O / options strategies (Groww-enabled):** futures basis cross-section, put-call
    ratio, IV skew (`get_option_chain`/`get_greeks`). Groww CASH daily history is deep
-   (~2002+, split-adjusted; F&O/options history depth still unmeasured) but NOT
-   dividend/demerger-adjusted → validate walk-forward as SUGGESTIVE only, plus forward paper. See
+   (~2002+, split-adjusted) but NOT dividend/demerger-adjusted. F&O measured 2026-07-09:
+   live contracts serve candles over their ~3-month life; EXPIRED contracts are NOT
+   resolvable ("provide correct trading symbol" — master lists live only) → basis/IV/PCR
+   are FORWARD-ONLY. Collector + pre-registered forward hypotheses: RL-2026-07-15. See
    RL-2026-07-11 planning notes and the Fable batch (B1–B8, G1–G5) referenced there.
 4. **Regime-conditional reversal sleeve:** bear-only reversal is marginal standalone but
    uncorrelated with the long-only book (active only when it's defensive) — test as a small
