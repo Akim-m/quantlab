@@ -1018,8 +1018,29 @@ explicitly.
   A miss on either is a valid negative.
 
 <!-- filled in AFTER the run -->
-- **Result:**
-- **Conclusion:**
+- **Result:** (run 2026-07-09, `xasset_trend.py`; orchestrator re-verified headline,
+  correlations, and base reproduction independently — exact match.) DATA REPAIR,
+  decision-critical and independently adjudicated: Yahoo adj_close carries
+  fabricated decimal-shift prints on 2019-12-19/20 (NIFTYBEES 129→13→130,
+  GOLDBEES 33.6→0.34→33.7; BANKBEES likewise) that create a fake −54% sleeve day.
+  GROWW CANDLES (independent source) show ~130.2/33.6 on those dates — the prints
+  are false. Repair: causal transient-spike filter (>50% off trailing 5d median →
+  drop + ffill), threshold set by physics not outcome; ret_clip=0.40 cannot fix it
+  (clipped round-trip leaves a permanent ~16% level shift). Raw/glitched SR would
+  be 0.416 (fail); repaired = the honest series. TRAIN froze tsmom + inverse-vol
+  (SR 0.889 over ma/equal variants). ONE test read: SR 1.057, +10.97%/yr, maxDD
+  −27.9% (10/40 bps: 1.074/1.023 — cost-insensitive at monthly turnover);
+  corr(REGIME book) 0.357, corr(F&O L/S) 0.137. Bar: SR ≥ 0.8 ✓, corr < 0.5 ✓ —
+  **PROMOTED** as a diversifier candidate. Prediction miss disclosed: maxDD −27.9%
+  vs predicted −10…−20% (monthly trend cannot dodge the fast Mar-2020 crash).
+- **Conclusion:** worked — first promotion since RL-2026-07-12. A retail-
+  implementable 5-ETF trend sleeve earns ~11%/yr at SR ~1.06 with only 0.36
+  correlation to the deployed equity book (gold + Nasdaq legs diversify).
+  Next step is NOT deployment into the book: a separately registered
+  portfolio-blend study (sizing REGIME + L/S + trend sleeve), preferably
+  leaning on forward data. +4 trials to the family (~68); DSR verdict unchanged
+  lab-wide. Data lesson graduated: Yahoo ETF series need the transient-spike
+  guard; Groww is the adjudicating source for disputed prints.
 
 ---
 

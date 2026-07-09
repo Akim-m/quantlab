@@ -60,8 +60,14 @@ setup; `research_log.md` is the study record (truth).
   post-hoc switch (protocol). Flagged for future forward-data confirmation.
   Ledger wart: 3 stale RL-16 rows (frozen_variant=gold placeholder);
   authoritative rows = frozen_variant=lowbeta.
-- IN PROGRESS (Opus x2): RL-2026-07-17 multi-asset ETF trend sleeve;
-  RL-2026-07-18 paper NIFTY short-straddle harness (forward-only).
+- DONE: RL-2026-07-17 — multi-asset ETF trend sleeve: **PROMOTED** (verified
+  to the digit). Frozen tsmom+invvol; test SR 1.057, +11%/yr, maxDD −27.9%,
+  corr(REGIME) 0.357, corr(L/S) 0.137 — clears both bars. Decision-critical
+  data repair independently adjudicated via GROWW: Yahoo had fabricated
+  decimal-shift prints 2019-12-19/20 on the ETFs (129→13, 33.6→0.34); Groww
+  shows ~130/33.6 → prints false, causal spike-filter repair justified.
+  Follow-up (not yet registered): portfolio-blend study REGIME+L/S+trend.
+- IN PROGRESS (Opus): RL-2026-07-18 paper NIFTY short-straddle harness.
 - DONE: RL-2026-07-15 — F&O forward-collection program. Measured: expired
   contracts unresolvable → basis/PCR/IV are FORWARD-ONLY; hypotheses (H1 basis
   x-section, H2 PCR extremes, H3 IV skew) pre-registered BEFORE day-one data;
