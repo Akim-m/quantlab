@@ -1262,6 +1262,97 @@ explicitly.
 
 ---
 
+## RL-2026-07-23 - Index-level band (Bollinger) mean reversion on NIFTYBEES
+
+- **Date (pre-registration):** 2026-07-09
+- **Economic hypothesis:** multi-day overreaction at the INDEX level — when price
+  stretches far below its trailing mean, forced/panicked selling overshoots and
+  reverts. Distinct from the cost-gated single-stock reversal family (index ETF,
+  ~a handful of round trips per year, 10 bps). The lab's own trend evidence cuts
+  the OTHER way at 12-month horizon; this tests the 1-month horizon where
+  reversion classically lives.
+- **Sample (locked):** NIFTYBEES.NS adj_close through the spike-repair guard,
+  TRAIN 2010→2016-12-31, TEST 2017-01-01→now, ONE read; cost 10 bps per side
+  headline (5/20 checks).
+- **Specification:** z = (price − 20d MA) / 20d σ, prior-day info. LONG-ONLY
+  timing book: enter when z < −k, exit at mean touch (z ≥ 0) or a time stop.
+  Exactly four locked variants: k ∈ {1.5, 2.0} × exit ∈ {mean-touch, 10-day
+  stop}. ONE frozen on TRAIN Sharpe; one test read. Report entries/yr and days
+  invested (power disclosure).
+- **Predicted outcome:** weak — likely 10–25% time invested, test Sharpe 0.4–0.9
+  vs B&H ~0.94; the bar (proper idiom per RL-19 lesson): Ledoit-Wolf
+  Sharpe-difference z vs B&H > 1 at 10 bps, surviving 20. Honest prior ~30%
+  pass; a negative retires index mean-reversion timing alongside turn-of-month.
+
+<!-- filled in AFTER the run -->
+- **Result:**
+- **Conclusion:**
+
+---
+
+## RL-2026-07-24 - VIX spike-and-recede re-entry overlay on the deployed book
+
+- **Date (pre-registration):** 2026-07-09
+- **Economic hypothesis:** India-VIX spikes overshoot and mean-revert; equity
+  returns in the weeks after a spike RECEDES are abnormally high (the risk
+  premium being realized). The deployed book sits in CASH during high-VIX
+  risk-off; a re-entry overlay that overrides risk-off and re-holds the
+  momentum book while a spike is receding would harvest the recovery the binary
+  overlay currently waits out.
+- **POWER DISCLOSURE (locked up front):** ~15–20 independent spike episodes in
+  2010–2026. Whatever the outcome, it rests on few events; a pass is promoted
+  only to FORWARD confirmation (paper-track), never straight deployment, and a
+  null is weak evidence — both stated now so neither can be oversold later.
+- **Sample (locked):** the deployed book's frozen construction + ^INDIAVIX,
+  TRAIN 2010→2016-12-31, TEST 2017-01-01→now, ONE read; 20 bps (10/40).
+- **Specification:** spike = VIX above its trailing-252d p-th percentile;
+  receding = VIX below its own trailing 5-day maximum. While spike-and-receding
+  (both flags, prior-day info), the overlay overrides `regime_on` to TRUE for h
+  days. Exactly four locked variants: p ∈ {90, 95} × h ∈ {10, 21}. ONE frozen
+  on TRAIN combined Sharpe; one test read vs the deployed baseline.
+- **Predicted outcome:** small positive — combined SR 1.87 → 1.88–1.95 by
+  re-entering recoveries earlier (2020-04, 2022-06 style episodes); bar:
+  Ledoit-Wolf Sharpe-difference z > 1 AND maxDD not worse by >2 pts, robust
+  10/40. Prior ~40% pass given the episode count.
+
+<!-- filled in AFTER the run -->
+- **Result:**
+- **Conclusion:**
+
+---
+
+## RL-2026-07-25 - Intraday bar archive (infrastructure; enables future ORB/VWAP studies)
+
+- **Date (pre-registration):** 2026-07-09
+- **Purpose & measured constraint:** Groww serves intraday candles only for the
+  trailing ~90 days (measured 2026-07-09: 60-min probes before 2026-04-10 return
+  EMPTY) and no free source has Indian intraday history — so opening-range
+  breakout, VWAP mean reversion, and any microstructure study are impossible to
+  backtest today. The only path is ARCHIVE-BEFORE-EXPIRY: each run fetches bars
+  since the last archived session and stores them locally. History then accrues
+  at 1:1 real time.
+- **Collector (locked):** 5-minute OHLCV bars for a locked universe — NIFTY
+  index + current nifty100 constituents (list frozen in the module; membership
+  drift disclosed as a limitation) — via `get_historical_candle_data` (5-min cap
+  15d/request, so any gap ≤~90 days self-heals on the next run). Storage:
+  `data/raw/intraday/` (git-ignored bulk data; DURABILITY RISK disclosed — this
+  archive lives only on this machine; back it up externally). A coverage row per
+  run goes to `experiments/intraday_archive.jsonl` (committed) so gaps are
+  auditable in git even though the bars are not.
+- **Locked future-study rule:** ORB and VWAP-reversion designs get their own
+  pre-registrations BEFORE any read, and no first read occurs before ≥12 months
+  of archived bars (≈2027-07). This entry locks the data program only — no
+  strategy claims are made or implied now. Cost prior stated for the record:
+  intraday turnover is exactly where this lab's cost evidence is most hostile;
+  these studies must clear realistic intraday costs (spread + STT + slippage),
+  not 20 bps.
+
+<!-- filled in when the archive program is evaluated -->
+- **Result:**
+- **Conclusion:**
+
+---
+
 ## Template
 
 ```markdown
