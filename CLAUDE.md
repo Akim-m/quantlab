@@ -29,7 +29,9 @@ and `research_log.md` before proposing or running anything.
 - **Groww trade API: DATA ONLY, read-only** (`groww_client.py`). Used for the
   authoritative NSE instrument master (`get_all_instruments`), F&O-shortability flags,
   live LTP/quotes, and recent-price validation. NOT the backtest price source — Groww
-  daily history is only ~2020+ and **unadjusted** for splits/bonuses.
+  daily history (measured 2026-07-09: back to ~2002-07, split/bonus-adjusted) is
+  **NOT dividend- or demerger-adjusted** — returns from it are wrong on high-yield
+  and demerged names. Intraday candles: trailing ~90 days only.
   - **NEVER place/modify/cancel an order.** `groww_client.call()` refuses order
     methods; do not bypass it. There is no trading path in this repo, by design.
   - **Secrets:** `API_KEY`/`API_SECRET` live in `.env` (git-ignored). Never print,

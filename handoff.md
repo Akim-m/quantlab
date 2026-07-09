@@ -38,7 +38,10 @@ is the operating setup + current state + what to do next.
 - Tests: `uv run python -m pytest -q` (currently **147 passing**). Keep green before "done".
 - Data: **Yahoo `adj_close` is the backtest price source** (total return; deep history).
   Groww is read-only for the authoritative NSE universe/instruments, F&O flags, live
-  quotes, and validation — NOT backtest prices (its daily history is ~2020+ and unadjusted).
+  quotes, and validation — NOT backtest prices. Measured 2026-07-09 on this account:
+  daily candles back to ~2002-07 (≤730d/request), split/bonus-adjusted but NOT
+  dividend/demerger-adjusted; intraday depth ~90 days (60min ≤90d, 10min ≤30d,
+  5min ≤15d, 1min ≤7d per request).
 
 ## 3. Research state — what's been found
 
@@ -86,8 +89,9 @@ turnover; even bear-only reversal is ~break-even at 20 bps. See `short_term*.py`
    leg restricted to F&O-shortable names (Groww instrument master has the flags), price the
    futures basis carry. Measures how much shortability destroys the 0.86 Sharpe.
 3. **F&O / options strategies (Groww-enabled):** futures basis cross-section, put-call
-   ratio, IV skew (`get_option_chain`/`get_greeks`). Groww history is shallow (~2020+) and
-   unadjusted → validate walk-forward on 2021+ as SUGGESTIVE only, plus forward paper. See
+   ratio, IV skew (`get_option_chain`/`get_greeks`). Groww CASH daily history is deep
+   (~2002+, split-adjusted; F&O/options history depth still unmeasured) but NOT
+   dividend/demerger-adjusted → validate walk-forward as SUGGESTIVE only, plus forward paper. See
    RL-2026-07-11 planning notes and the Fable batch (B1–B8, G1–G5) referenced there.
 4. **Regime-conditional reversal sleeve:** bear-only reversal is marginal standalone but
    uncorrelated with the long-only book (active only when it's defensive) — test as a small

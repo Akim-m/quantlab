@@ -695,6 +695,19 @@ explicitly.
   24,014 vs 200d MA 24,853), 50% cash + defensive book. Groww live/data calls currently return
   HTTP 403 (token authenticates but lacks the data entitlement/quota) - an account issue, not
   code. Forward track record accrues once Groww access is restored.
+- **Data addendum (2026-07-09, measurement — not a strategy trial, no test-window use):**
+  Groww API coverage audited live on the owner's account (read-only
+  `get_historical_candle_data` probes, RELIANCE/ITC). CORRECTS the note above (and
+  RL-2026-07-10) that said "~2020+ and unadjusted for splits/bonuses": CASH daily
+  candles actually reach back to ~2002-07-18 and ARE split/bonus-adjusted (pre-2024
+  RELIANCE prices are halved for the 1:1 bonus). They are NOT dividend-adjusted and
+  NOT demerger-adjusted (Groww ≈ raw traded price: +8.7% vs Yahoo close on pre-2023
+  RELIANCE = Jio Financial demerger; +3.7% on pre-2025 ITC = ITC Hotels; Yahoo
+  close-vs-adj gap = dividends). So the verdict stands — Yahoo `adj_close` remains
+  the only valid backtest price source — but Groww daily is now a usable
+  cross-VALIDATION source to ~2002 for price levels on non-demerged names.
+  Per-request caps: daily ≤730d; intraday depth ~90 days total (60min ≤90d/request,
+  10min ≤30d, 5min ≤15d, 1min ≤7d). Live LTP entitlement confirmed working.
 - **Conclusion:** Two genuine improvements to the deployable strategy - CONCENTRATION (top
   decile, conviction-weighted) recovers real momentum alpha the diluted quintile hid (paired
   active-t vs EW ~0 -> ~1.3), and a VIX-augmented regime filter sharpens the crash exit (SR

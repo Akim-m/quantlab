@@ -1,8 +1,13 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+import pytest
 
 from quantlab import india
 from quantlab.india_blend_study import _sector_demean, lo_erc, raw_signals
+
+_NIFTY500_CSV = Path("data/raw/ind_nifty500list.csv")
 
 
 def _prices(n=400, cols=("A", "B", "C", "D", "E", "F"), seed=0):
@@ -12,6 +17,10 @@ def _prices(n=400, cols=("A", "B", "C", "D", "E", "F"), seed=0):
     return pd.DataFrame(100 * np.exp(np.cumsum(steps, axis=0)), index=idx, columns=list(cols))
 
 
+@pytest.mark.skipif(
+    not _NIFTY500_CSV.exists(),
+    reason="data/raw/ind_nifty500list.csv absent; fetch via india.nse_index_symbols('nifty500')",
+)
 def test_sector_map_parses_symbols_and_industries():
     m = india.sector_map("nifty500")
     assert len(m) > 400

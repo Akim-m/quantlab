@@ -81,6 +81,7 @@ def test_run_never_calls_order_method_and_computes_pnl(tmp_path, monkeypatch):
     for k in ("timestamp", "regime_state", "cash_frac", "book_intraday_ret",
               "nifty_intraday_ret", "n_names", "n_quotes_ok"):
         assert k in rec
+    assert rec["weights"] == pytest.approx({"AAA.NS": 0.3, "BBB.NS": 0.2})
 
 
 def test_fetch_ltp_degrades_gracefully_on_failure(monkeypatch):
@@ -109,3 +110,138 @@ def test_order_methods_refused_by_dispatcher():
     """The harness's only channel to Groww refuses order methods before any network."""
     with pytest.raises(PermissionError):
         gc.call("place_order")
+
+
+# ---- forward_track: fully synthetic, monkeypatched price loader, no network ----
+
+def _use_prices(monkeypatch, prices):
+    monkeypatch.setattr(lp, "load_yahoo_ohlcv", lambda syms, refresh=False: {})
+    monkeypatch.setattr(lp, "close_prices", lambda data: prices)
+
+
+def _write_rows(path, rows):
+    with open(path, "w") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+
+
+def test_forward_track_book_returns_hand_computed(tmp_path, monkeypatch):
+    spy = Spy()
+    monkeypatch.setattr(gc, "call", spy)               # prove Groww is never touched
+    idx = pd.to_datetime(["2026-01-01", "2026-01-02", "2026-01-05"])
+    prices = pd.DataFrame({
+        "AAA.NS": [100.0, 110.0, 121.0],
+        "BBB.NS": [100.0, 100.0, 100.0],
+        "^NSEI":  [200.0, 202.0, 202.0],
+    }, index=idx)
+    _use_prices(monkeypatch, prices)
+    p = tmp_path / "pt.jsonl"
+    _write_rows(p, [
+        {"panel_date": "2026-01-01", "weights": {"AAA.NS": 0.5, "BBB.NS": 0.5}},
+        {"panel_date": "2026-01-02", "weights": {"AAA.NS": 1.0}},
+        {"panel_date": "2026-01-05", "weights": {"BBB.NS": 1.0}},
+    ])
+    daily = lp.forward_track(path=str(p), cost_bps=0.0)
+
+    assert spy.methods == []                            # the report path never calls Groww
+    # row D1 = establishment (cost 0) -> 0 ; row D2 = W[D1].r(D1->D2) ; row D3 = W[D2].r(D2->D3)
+    assert daily["book"].iloc[0] == pytest.approx(0.0)
+    assert daily["book"].iloc[1] == pytest.approx(0.5 * 0.10 + 0.5 * 0.0)
+    assert daily["book"].iloc[2] == pytest.approx(121 / 110 - 1)
+    assert daily["nsei"].iloc[1] == pytest.approx(202 / 200 - 1)
+    assert daily["active"].iloc[1] == pytest.approx(0.05 - (202 / 200 - 1))
+
+
+def test_forward_track_dedupes_last_row_per_date(tmp_path, monkeypatch):
+    idx = pd.to_datetime(["2026-01-01", "2026-01-02", "2026-01-05"])
+    prices = pd.DataFrame({
+        "AAA.NS": [100.0, 100.0, 100.0],
+        "BBB.NS": [100.0, 100.0, 110.0],               # BBB moves only D2->D3
+        "^NSEI":  [200.0, 200.0, 200.0],
+    }, index=idx)
+    _use_prices(monkeypatch, prices)
+    p = tmp_path / "pt.jsonl"
+    _write_rows(p, [
+        {"panel_date": "2026-01-01", "weights": {"AAA.NS": 1.0}},
+        {"panel_date": "2026-01-02", "weights": {"AAA.NS": 1.0}},   # stale, overwritten
+        {"panel_date": "2026-01-02", "weights": {"BBB.NS": 1.0}},   # final D2 book
+        {"panel_date": "2026-01-05", "weights": {"AAA.NS": 1.0}},
+    ])
+    daily = lp.forward_track(path=str(p), cost_bps=0.0)
+    # D2->D3 return uses the LAST D2 book (BBB=1.0): BBB 100->110 = +0.10, not AAA's 0.0
+    assert daily["book"].iloc[2] == pytest.approx(0.10)
+
+
+def test_forward_track_no_lookahead(tmp_path, monkeypatch):
+    idx = pd.to_datetime(["2026-01-01", "2026-01-02", "2026-01-05"])
+    prices = pd.DataFrame({
+        "AAA.NS": [100.0, 110.0, 121.0],
+        "BBB.NS": [100.0, 105.0, 100.0],
+        "^NSEI":  [200.0, 202.0, 205.0],
+    }, index=idx)
+    _use_prices(monkeypatch, prices)
+    p = tmp_path / "pt.jsonl"
+    base = {"panel_date": "2026-01-01", "weights": {"AAA.NS": 0.5, "BBB.NS": 0.5}}
+    _write_rows(p, [base, {"panel_date": "2026-01-02", "weights": {"AAA.NS": 1.0}}])
+    r0 = lp.forward_track(path=str(p), cost_bps=0.0)["book"].iloc[1]
+    # perturbing the D+1 (D2) book must not move the realized D1->D2 return
+    _write_rows(p, [base, {"panel_date": "2026-01-02", "weights": {"BBB.NS": 1.0}}])
+    r1 = lp.forward_track(path=str(p), cost_bps=0.0)["book"].iloc[1]
+    assert r0 == pytest.approx(r1)
+
+
+def test_forward_track_needs_two_days_and_ignores_legacy_rows(tmp_path, capsys):
+    p = tmp_path / "pt.jsonl"
+    _write_rows(p, [
+        {"panel_date": "2026-01-01", "weights": {"AAA.NS": 1.0}},
+        {"panel_date": "2026-01-02"},                  # legacy row, no weights -> ignored
+    ])
+    assert lp.forward_track(path=str(p)) is None
+    assert "need >= 2 snapshot days" in capsys.readouterr().out
+
+
+def test_forward_track_missing_file_is_clean(tmp_path, capsys):
+    assert lp.forward_track(path=str(tmp_path / "absent.jsonl")) is None
+    assert "need >= 2 snapshot days" in capsys.readouterr().out
+
+
+def test_forward_track_empty_book_is_cash_not_drift(tmp_path, monkeypatch):
+    idx = pd.to_datetime(["2026-01-01", "2026-01-02", "2026-01-05"])
+    prices = pd.DataFrame({
+        "AAA.NS": [100.0, 110.0, 121.0],               # +10% each step
+        "^NSEI":  [200.0, 200.0, 200.0],
+    }, index=idx)
+    _use_prices(monkeypatch, prices)
+    p = tmp_path / "pt.jsonl"
+    _write_rows(p, [
+        {"panel_date": "2026-01-01", "weights": {"AAA.NS": 1.0}},
+        {"panel_date": "2026-01-01"},                  # legacy: no key -> ignored, no clobber
+        {"panel_date": "2026-01-02", "weights": {}},   # deliberate all-cash book
+        {"panel_date": "2026-01-05", "weights": {"AAA.NS": 1.0}},
+    ])
+    daily = lp.forward_track(path=str(p), cost_bps=0.0)
+    # D1->D2 earned by D1's book (legacy row ignored, else this would be 0)
+    assert daily["book"].iloc[1] == pytest.approx(0.10)
+    # D2 book is CASH: D2->D3 return is 0 despite AAA +10% (not the drifted D1 book)
+    assert daily["book"].iloc[2] == pytest.approx(0.0)
+    # with costs, the D2 row charges the exit turnover (full book out = 1.0 traded)
+    daily = lp.forward_track(path=str(p), cost_bps=20.0)
+    assert daily["book"].iloc[1] == pytest.approx(0.10 - 1.0 * 20 / 10_000)
+
+
+def test_forward_track_drops_unpriced_symbol_without_renormalizing(tmp_path, monkeypatch):
+    idx = pd.to_datetime(["2026-01-01", "2026-01-02"])
+    prices = pd.DataFrame({          # ZZZ.NS is absent from the price panel
+        "AAA.NS": [100.0, 110.0],
+        "^NSEI":  [200.0, 200.0],
+    }, index=idx)
+    _use_prices(monkeypatch, prices)
+    p = tmp_path / "pt.jsonl"
+    _write_rows(p, [
+        {"panel_date": "2026-01-01", "weights": {"AAA.NS": 0.5, "ZZZ.NS": 0.5}},
+        {"panel_date": "2026-01-02", "weights": {"AAA.NS": 1.0}},
+    ])
+    daily = lp.forward_track(path=str(p), cost_bps=0.0)
+    # ZZZ dropped -> its 0.5 becomes cash (earns 0), NOT renormalized onto AAA:
+    # book D1->D2 = 0.5 * (110/100 - 1) = 0.05, not the renormalized 0.10.
+    assert daily["book"].iloc[1] == pytest.approx(0.05)

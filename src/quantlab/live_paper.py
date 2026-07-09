@@ -15,15 +15,19 @@ records the target book and regime state, with the live P&L fields left null.
 from __future__ import annotations
 
 import argparse
+import json
 import warnings
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from . import groww_client as gc
+from .backtest import backtest_weights
 from .blend import market_on
+from .data import close_prices, load_yahoo_ohlcv
 from .india import india_panel, sector_map
 from .india_blend_study import raw_signals
 from .india_run import _core_regime_band_ls
@@ -32,6 +36,7 @@ from .tracking import log_run
 SEGMENT = "CASH"                       # NSE cash equity
 READ_METHODS = ("get_ltp",)            # the only Groww methods this harness ever calls
 NIFTY_PROXIES = ("NSE_NIFTY", "NSE_NIFTYBEES")  # index first, then the tradeable ETF
+BENCH = "^NSEI"                        # Nifty 50 price index, the forward-track benchmark
 IST = timezone(timedelta(hours=5, minutes=30))
 SNAPSHOT_PATH = "experiments/paper_trades.jsonl"
 
@@ -149,6 +154,7 @@ def run(start: str = "2010-01-01", index: str = "nifty500", refresh: bool = Fals
         "nifty_proxy": proxy, "n_names": int(len(book.weights)),
         "n_quotes_ok": n_ok, "groww_ok": err is None and n_ok > 0,
         "note": err or "ok",
+        "weights": {s: round(float(w), 6) for s, w in book.weights.items()},
     }
     if write:
         log_run(row, path=path)
@@ -168,6 +174,80 @@ def run(start: str = "2010-01-01", index: str = "nifty500", refresh: bool = Fals
     return row
 
 
+def _read_books(path: str) -> dict[pd.Timestamp, dict[str, float]]:
+    """Snapshot books keyed by panel_date, keeping the LAST row per date.
+
+    Legacy rows without a `weights` KEY predate the forward track and are skipped;
+    an explicit empty book ({}) is a real all-cash day and rebalances to cash.
+    A missing ledger reads as zero books (the forward report then reports that cleanly).
+    """
+    p = Path(path)
+    if not p.exists():
+        return {}
+    books: dict[pd.Timestamp, dict[str, float]] = {}
+    for line in p.read_text().splitlines():
+        if not line.strip():
+            continue
+        rec = json.loads(line)
+        if "weights" in rec:
+            books[pd.Timestamp(rec["panel_date"])] = rec["weights"]  # last write wins
+    return books
+
+
+def forward_track(path: str = SNAPSHOT_PATH, cost_bps: float = 20.0,
+                  refresh: bool = False) -> pd.DataFrame | None:
+    """Rigorous forward return of the recorded REGIME books vs the Nifty.
+
+    Each snapshot's held weights are applied at that panel date's adjusted close and
+    earn the realized close-to-close return until the next snapshot (backtest_weights
+    semantics). Pure report: prints a per-day and cumulative book-vs-benchmark table
+    and never touches Groww.
+    """
+    books = _read_books(path)
+    if len(books) < 2:
+        print(f"[forward] need >= 2 snapshot days to compute a forward return; "
+              f"have {len(books)} (run a daily snapshot first)")
+        return None
+
+    dates = sorted(books)
+    symbols = sorted({s for w in books.values() for s in w})
+    W = pd.DataFrame(0.0, index=pd.DatetimeIndex(dates), columns=symbols)
+    for d in dates:
+        for s, wt in books[d].items():
+            W.at[d, s] = float(wt)
+
+    prices = close_prices(load_yahoo_ohlcv(symbols + [BENCH], refresh=refresh)).loc[dates[0]:]
+    priced = [s for s in symbols if s in prices.columns and prices[s].notna().any()]
+    missing = [s for s in symbols if s not in priced]
+
+    held = W.sum(axis=1)
+    priced_w = W[priced].sum(axis=1)
+    cov = (priced_w / held).where(held > 0, 1.0)   # all-cash day: nothing to price
+    print(f"[forward] priced share of held weight: min {cov.min():.1%}, "
+          f"mean {cov.mean():.1%} across {len(dates)} snapshot day(s)")
+    if missing:
+        print(f"[forward] WARNING: dropped {len(missing)} unpriced symbol(s), weights "
+              f"NOT renormalized: {', '.join(missing)}")
+        for d in dates:
+            print(f"  {d.date()}: priced {priced_w[d]:.1%} of {held[d]:.1%} held")
+
+    res = backtest_weights(prices[priced], W, cost_bps=cost_bps)
+    book = res.returns
+    nsei = prices[BENCH].pct_change().reindex(book.index).fillna(0.0)
+    daily = pd.DataFrame({"book": book, "nsei": nsei, "active": book - nsei})
+
+    print(f"{'date':<12}{'book':>10}{'nifty':>10}{'active':>10}")
+    for d, r in daily.iterrows():
+        print(f"{str(d.date()):<12}{r.book*100:>9.2f}%{r.nsei*100:>9.2f}%{r.active*100:>9.2f}%")
+    cum_b = float((1.0 + book).prod() - 1.0)
+    cum_n = float((1.0 + nsei).prod() - 1.0)
+    drag = float((res.turnover * cost_bps / 10_000).sum())
+    print(f"cumulative  book {cum_b*100:+.2f}%  nifty {cum_n*100:+.2f}%  "
+          f"active {(cum_b - cum_n)*100:+.2f}%")
+    print(f"turnover cost drag {drag*100:.2f}% over {len(daily)} tracked day(s)")
+    return daily
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="RL-2026-07-10 REGIME live paper snapshot")
     p.add_argument("--start", default="2010-01-01")
@@ -176,7 +256,14 @@ def main() -> None:
                    help="refresh Yahoo history to the latest close before building the book")
     p.add_argument("--path", default=SNAPSHOT_PATH)
     p.add_argument("--dry-run", action="store_true", help="print but do not append a row")
+    p.add_argument("--forward", action="store_true",
+                   help="print the forward-return report from recorded books, no snapshot")
+    p.add_argument("--cost-bps", type=float, default=20.0,
+                   help="turnover cost for the forward report (default 20)")
     a = p.parse_args()
+    if a.forward:
+        forward_track(path=a.path, cost_bps=a.cost_bps, refresh=a.refresh)
+        return
     run(start=a.start, index=a.index, refresh=a.refresh, path=a.path, write=not a.dry_run)
 
 
