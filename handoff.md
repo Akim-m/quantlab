@@ -13,7 +13,8 @@ is the operating setup + current state + what to do next.
   orchestrator: keep the top-level plan, delegate labor, and **verify every delegated
   number yourself** (re-run the headline metric in the scratchpad before trusting it —
   this caught a subagent's inflated DSR of 0.999 that was really 0.006).
-- **Commit + push after every major task** to `origin` (github.com/Akim-m/quantlab), on
+- **Commit + push after every major task** to the `fork` remote (github.com/Akim-m/quantlab;
+  `origin` is the read-only upstream gouthamk16/quantlab — pushing there 403s), on
   `main` (solo repo, main-based history). Each commit message says *why*.
 - **Secrets NEVER go to git and are never read/printed.** Groww `API_KEY`/`API_SECRET`
   live in `.env` (git-ignored). Before every commit, grep the staged files for
