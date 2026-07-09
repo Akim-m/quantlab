@@ -107,6 +107,27 @@ def long_only_topq_banded(
     return weights
 
 
+def conviction_topq(
+    score: pd.DataFrame,
+    top: float = 0.1,
+    vol_lb: int = 63,
+) -> pd.DataFrame:
+    """Long the top `top` fraction by score, weighted proportional to positive
+    z-score (conviction) rather than inverse-vol. Sums to 1.
+
+    RL-2026-07-10 finding: the momentum gradient over equal-weight lives in the
+    extremes, which the diluted top-quintile inverse-vol book averaged away.
+    Concentrating (top decile) and moving conviction into the weights lifted the
+    paired active-t vs equal-weight from ~0 to ~1.3 - the biggest recovered edge.
+    The trade-off is higher idiosyncratic drawdown, so pair with a regime overlay."""
+    ranks = score.rank(axis=1, ascending=False)
+    n = score.notna().sum(axis=1)
+    keep = ranks.le((n * top).clip(lower=1.0), axis=0)
+    raw = zscore_xs(score).clip(lower=0.0).where(keep)
+    total = raw.sum(axis=1).replace(0.0, np.nan)
+    return raw.div(total, axis=0).fillna(0.0)
+
+
 def trend_overlay(book: pd.DataFrame, market: pd.Series, ma_lb: int = 200) -> pd.DataFrame:
     """Scale the whole book to cash on days the market closed below its `ma_lb` MA.
 
@@ -120,6 +141,26 @@ def trend_overlay(book: pd.DataFrame, market: pd.Series, ma_lb: int = 200) -> pd
 def market_on(market: pd.Series, ma_lb: int = 200) -> pd.Series:
     """Causal risk-on flag: market closed above its `ma_lb` MA (known at t)."""
     return (market > market.rolling(ma_lb).mean())
+
+
+def vix_calm(vix: pd.Series, lb: int = 252, pct: float = 0.80) -> pd.Series:
+    """Risk-on-eligible flag: the volatility index is below its trailing `pct`
+    quantile (calm). Causal - the quantile at t uses vix through t only.
+
+    RL-2026-07-10: OR-ing this with the 200d-MA trend filter (risk-off when EITHER
+    fires) improved the regime overlay - the fast VIX catches volatility spikes the
+    slow MA is late to (best regime rule: test Sharpe 1.86, maxDD -27% vs 1.75/-30%
+    for the MA alone). India VIX (^INDIAVIX) is on Yahoo back to 2010."""
+    return vix < vix.rolling(lb).quantile(pct)
+
+
+def regime_on(market: pd.Series, vix: pd.Series | None = None,
+              ma_lb: int = 200, vix_lb: int = 252, vix_pct: float = 0.80) -> pd.Series:
+    """Combined causal risk-on flag: market above its MA AND (if given) VIX calm."""
+    on = market_on(market, ma_lb)
+    if vix is not None:
+        on = on & vix_calm(vix, vix_lb, vix_pct).reindex(on.index).fillna(True)
+    return on
 
 
 def regime_switch(

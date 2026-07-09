@@ -49,6 +49,10 @@ significance for implicit search.
   sample => separate pre-registration. Aim: map which strategy wins in which situation
   (constraint / universe breadth / cost / causal market regime) and ship a deployable
   long-only blend. Implicit-search count for this family recorded with the results.
+- **Phase-2 refinements (concentration, VIX regime, sector rotation, 13 short-term books)** -
+  RL-2026-07-11. Exploratory refinements on the SAME 2017-2026 window (now multi-use, flagged);
+  ~4 concentration levels + VIX/MA overlay variants + sector rotation + 13 short-term trials.
+  Cumulative India trial count now ~50+; strict DSR bar rises accordingly. See RL-2026-07-11.
 
 ---
 
@@ -638,6 +642,64 @@ explicitly.
   answer for "different situations": momentum-tilted broad book for return, a 200-MA regime
   overlay for drawdown/bear protection, and a market-neutral residual-momentum sleeve as the
   uncorrelated diversifier.
+
+---
+
+## RL-2026-07-11 - Phase-2 refinements: concentration, VIX regime, sector rotation, short-term
+
+- **Date:** 2026-07-09. Exploratory refinement round on the RL-2026-07-10 universe/split
+  (N500-277, test 2017+, 20 bps, ret_clip=0.40). HONESTY FLAG: the 2017-2026 window is now
+  heavily RE-USED across these rounds; every number below is one more use, so the strict
+  statistical verdict is unchanged (fails DSR) and the real proof is FORWARD paper-tracking
+  (`live_paper.py` -> `experiments/paper_trades.jsonl`). Each refinement's design is frozen
+  before its single test read; parameter searches are disclosed.
+- **Experiment zero (TRAIN 2010-2016 only, no test use):** decile rank-response vs EW-277.
+  Momentum has a real, near-monotonic TOP-decile gradient on train (top momentum decile
+  +13.7%/yr active vs EW; sector-mom +12.9%, 6-1 +10.4%, 52w-strength +6.7%). Low-vol
+  NEGATIVE (high-vol names beat EW in the bull decade). The "exclude losers" thesis is weak
+  - the loser decile is ~flat, not strongly negative - so the alpha is in OWNING winners
+  (concentration), not excluding trash.
+- **Concentration recovers momentum alpha over EW (the key phase-2 finding).** The RL-07-10
+  top-QUINTILE inverse-vol book had paired active-t vs EW-277 ~ 0 (the momentum selection
+  added nothing over the breadth premium). Concentrating recovers it: top-quintile t 0.06 ->
+  top-decile inverse-vol t 1.08 -> top-decile CONVICTION (weight ~ +z-score) t 1.34 (test SR
+  1.75, ann 38%, maxDD -31%) -> top-5% conviction t 1.57 (SR 1.68, ann 42%, maxDD -45%). So
+  the momentum gradient is real and lives in the extremes; the quintile averaged it away. The
+  cost is drawdown (concentration raises maxDD). 4 concentration levels searched (disclosed);
+  still below the pre-registered t>=2 bar. Codified as `blend.conviction_topq`.
+- **India-VIX regime filter improves REGIME (real upgrade).** OR-ing a fast ^INDIAVIX filter
+  (risk-off when VIX in its trailing top 20%) with the slow 200d-MA trend filter (risk-off if
+  EITHER fires) beat the MA-only overlay on the top-decile book: test Sharpe **1.86** (vs 1.75
+  MA-only), maxDD **-27%** (vs -30%), Feb-Jun 2020 -0.5% (VIX-only slice +26%). VIX catches
+  spikes the slow MA is late to. ^INDIAVIX is on Yahoo to 2010 so this is fully backtestable.
+  Codified as `blend.vix_calm` / `blend.regime_on`. VIX percentile (80th, 252d) is a chosen
+  param (disclosed). **New best deployable book: top-decile conviction momentum + (200MA OR
+  VIX) regime overlay - test SR 1.86, ann 35.7%, maxDD -27%.**
+- **Sector rotation (B3): NEGATIVE.** Long stocks in the top-5 industries by 6m industry
+  momentum ties EW (test SR 1.35 vs 1.34), paired active-t vs EW +0.87 (ns), worse maxDD
+  (-45%); a 200MA overlay hurts it. Not promoted (as the planning prior predicted).
+- **Short-term (daily/weekly) family, 13 books on nifty100: NO cost-survivor.** Short-term
+  reversal has a REAL gross edge (5-day reversal ~0.67 gross Sharpe, residual/vol-gated
+  similar) that costs DESTROY: net Sharpe ~break-even at 5 bps, negative by 10, badly negative
+  at 20 (~130%/wk turnover). Long-only short-horizon tilts show high net Sharpe (0.8-1.1) but
+  it is pure market beta - every one has NEGATIVE paired active-t vs EW. Faster 2-day reversal
+  stronger gross but hopeless turnover; overnight-intraday negative at all costs; nifty50
+  (5 bps) rescues none. 0 of 13 clear BH-FDR + DSR. THE ONE LEAD: reversal's edge concentrates
+  in the 200-MA BEAR regime (net@10 bear Sharpe ~1.0-1.35) - flagged as the next pre-registered
+  trial (regime-conditional reversal), deliberately not run to avoid p-hacking the frozen family.
+- **Live paper harness (`live_paper.py`): READ-ONLY, built and verified** (only get_ltp via the
+  order-refusing wrapper; method-spy test). As of 2026-07-09 the strategy is risk-OFF (^NSEI
+  24,014 vs 200d MA 24,853), 50% cash + defensive book. Groww live/data calls currently return
+  HTTP 403 (token authenticates but lacks the data entitlement/quota) - an account issue, not
+  code. Forward track record accrues once Groww access is restored.
+- **Conclusion:** Two genuine improvements to the deployable strategy - CONCENTRATION (top
+  decile, conviction-weighted) recovers real momentum alpha the diluted quintile hid (paired
+  active-t vs EW ~0 -> ~1.3), and a VIX-augmented regime filter sharpens the crash exit (SR
+  1.86, maxDD -27%). Neither reaches the strict t>=2 / DSR bar, and the test window is now
+  multi-use, so both are PROVISIONAL pending forward validation. Sector rotation and every
+  short-term book FAIL to beat EW / survive costs - honest negatives that tighten "EW-277 is
+  near the efficient long-only frontier for this universe/decade." Best deployable book updated
+  to: top-decile conviction momentum + (200MA OR India-VIX) regime overlay.
 
 ---
 

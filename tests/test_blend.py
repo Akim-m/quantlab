@@ -3,12 +3,15 @@ import pandas as pd
 
 from quantlab.blend import (
     composite,
+    conviction_topq,
     long_only_topq,
     long_only_topq_banded,
     long_short,
     market_on,
+    regime_on,
     regime_switch,
     trend_overlay,
+    vix_calm,
     vol_target_overlay,
     zscore_xs,
 )
@@ -82,6 +85,32 @@ def test_long_only_topq_banded_is_causal():
     s2.iloc[-1] = s2.iloc[-1] * 5.0  # perturb the last row only
     w2 = long_only_topq_banded(s2, px, buy_top=0.25, hold_top=0.5)
     assert np.allclose(w.iloc[-5].to_numpy(), w2.iloc[-5].to_numpy())
+
+
+def test_conviction_topq_concentrates_weight_on_higher_score():
+    px = _prices()
+    score = px.pct_change(60)
+    w = conviction_topq(score, top=0.5).iloc[-1]
+    assert (w >= -1e-12).all()
+    assert abs(w.sum() - 1.0) < 1e-9
+    assert (w > 0).sum() == 2                       # top half of 4 names held
+    # among held names, the higher-score one carries more weight (conviction)
+    held = w[w > 0].index
+    s = score.iloc[-1][held]
+    assert (w[s.idxmax()] >= w[s.idxmin()])
+
+
+def test_vix_calm_and_regime_on_are_causal():
+    idx = pd.bdate_range("2015-01-01", periods=400)
+    vix = pd.Series(np.tile([12.0, 14.0, 16.0, 18.0, 20.0], 80), index=idx)  # varies 12-20
+    vix.iloc[-1] = 100.0                             # a spike on the last day only
+    calm = vix_calm(vix, lb=100, pct=0.8)
+    assert bool(calm.iloc[-1]) is False             # spike day is NOT calm
+    assert bool(calm.iloc[-5]) is True              # a low-vol (12) day is calm
+    # regime_on = market_on AND vix_calm; a future vix spike can't change past flags
+    mkt = pd.Series(np.linspace(100, 200, 400), index=idx)
+    v2 = vix.copy(); v2.iloc[-1] = 12.0
+    assert regime_on(mkt, vix, 50, 100).iloc[-40] == regime_on(mkt, v2, 50, 100).iloc[-40]
 
 
 def test_long_short_dollar_neutral_unit_gross():
