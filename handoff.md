@@ -1,123 +1,111 @@
 # HANDOFF — Indian equity strategy research (quantlab)
 
-For the next agent picking up this work. Read `CLAUDE.md` (conventions) and
-`research_log.md` (RL-2026-07-10 and RL-2026-07-11 — the full study) first; this file
-is the operating setup + current state + what to do next.
+For the next agent picking up this work. Read `CLAUDE.md` (conventions),
+`protocol.md` (honesty rules incl. the bar-idiom lesson), and `research_log.md`
+(RL-2026-07-10 → RL-2026-07-25 — the full study record) first; `progress.md` is the
+running state log. This file is the operating setup + current state + what to do next.
 
 ---
 
 ## 1. How to operate (the setup this work used — keep it)
 
-- **Subagent roles:** use **Fable** subagents for planning/orchestration, **Opus**
-  subagents for execution. **Never run more than 3 subagents concurrently.** You are the
-  orchestrator: keep the top-level plan, delegate labor, and **verify every delegated
-  number yourself** (re-run the headline metric in the scratchpad before trusting it —
-  this caught a subagent's inflated DSR of 0.999 that was really 0.006).
-- **Commit + push after every major task** to the `fork` remote (github.com/Akim-m/quantlab;
-  `origin` is the read-only upstream gouthamk16/quantlab — pushing there 403s), on
-  `main` (solo repo, main-based history). Each commit message says *why*.
-- **Secrets NEVER go to git and are never read/printed.** Groww `API_KEY`/`API_SECRET`
-  live in `.env` (git-ignored). Before every commit, grep the staged files for
-  `\.env|API_|secret` and abort if hit.
-- **Groww trade API = DATA ONLY, read-only.** NEVER place/modify/cancel an order.
-  `groww_client.call()` refuses order methods — go through it, don't build a raw client.
-  Self-throttle ≤7 req/s (the shared `RATE` limiter enforces it). `get_ltp` caps at 50
-  symbols/call (batch). Live/data entitlement depends on the account's API plan.
-- **Honesty protocol (Arnott–Harvey–Markowitz, see `protocol.md`):** pre-register in
-  `research_log.md` before running; the test window is touched once; realistic costs;
-  BH-FDR + Deflated Sharpe (against the FULL trial family, not just the winners);
-  negatives are deliverables. Design blends/overlays on TRAIN, freeze, then one test read.
-- **The 2017–2026 test window is now heavily RE-USED.** Every new test on it is one more
-  use; the strict DSR verdict stays "fails," and the only clean proof left is the FORWARD
-  paper-track. Prefer forward validation or a genuinely fresh hold-out for new claims.
+- **Subagent roles:** **Fable** orchestrates/plans/verifies; **Opus** subagents execute.
+  **Never more than 3 concurrent subagents.** The orchestrator re-verifies EVERY
+  delegated decision number independently in the scratchpad before it enters the
+  record (this has caught an inflated DSR, a wrong coverage denominator, a silent
+  empty-book skip, and adjudicated a decisive data repair).
+- **Pre-register before running** (RL-YYYY-MM-DD id in `research_log.md`): hypothesis,
+  locked sample, locked variants (≤4), TRAIN-only design freeze, predicted outcome,
+  and a deployment bar **stated in the thesis's own idiom** (Sharpe-difference for
+  risk-adjusted claims — receipt: RL-2026-07-19's mis-specified bar). One test read.
+  Executors do NOT write research_log/progress — the orchestrator fills results after
+  verification.
+- **Commit + push after every verified milestone** to the **`fork` remote**
+  (github.com/Akim-m/quantlab; `origin` is the read-only upstream — pushing there
+  403s). Before each commit: grep staged content for secret VALUES; never stage .env.
+- **Groww trade API = DATA ONLY, read-only.** `groww_client.call()` refuses order
+  methods; ≤7 req/s enforced by the shared RATE limiter; `get_ltp` batches ≤50.
+  Secrets in `.env` (git-ignored, present on this machine); never read/print them.
+- **The 2017–2026 test window is heavily RE-USED (~80+ trials).** Strict DSR verdict
+  lab-wide: FAILS. New claims should lean on the forward ledgers or the locked
+  forward evaluations, not more hold-out reads.
 
 ## 2. Environment & checks
 
-- Managed by **uv**. Dev deps: `uv sync --extra dev`.
-- ALWAYS set `PYTHONIOENCODING=utf-8` (console is cp1252 — unicode crashes) and
-  `PYTHONPATH=src` for `-m` runs.
-- Tests: `uv run python -m pytest -q` (currently **147 passing**). Keep green before "done".
-- Data: **Yahoo `adj_close` is the backtest price source** (total return; deep history).
-  Groww is read-only for the authoritative NSE universe/instruments, F&O flags, live
-  quotes, and validation — NOT backtest prices. Measured 2026-07-09 on this account:
-  daily candles back to ~2002-07 (≤730d/request), split/bonus-adjusted but NOT
-  dividend/demerger-adjusted; intraday depth ~90 days (60min ≤90d, 10min ≤30d,
-  5min ≤15d, 1min ≤7d per request).
-  Full API surface (audited 2026-07-09): batched `get_ltp`/`get_ohlc` (≤50/call);
-  `get_quote` (per-symbol: 5-level depth, total buy/sell qty, circuit limits, volume,
-  OI fields on derivatives); option chain / greeks / expiries / contracts (live
-  contracts only — expired unresolvable); instrument master (lot/tick/freeze);
-  `GrowwFeed` websocket (streaming LTP, market depth, index values); v2
-  `get_historical_candles` adds weekly/monthly but caps ALL intervals at 180d/request
-  (v1 is strictly better for bulk); MCX/commodity + currency segments exist in the
-  master (contract-level, forward-only, unexplored). Account methods (holdings/
-  positions/margin) are read-only but irrelevant to research. Order methods refused
-  by `groww_client.call`, permanently.
+- **uv**; dev deps `uv sync --extra dev`. Always `PYTHONIOENCODING=utf-8` (cp1252
+  console) and `PYTHONPATH=src` for `-m` runs.
+- Tests: `uv run python -m pytest -q` — **224+ passing** (RL-23/24/25 in flight add
+  more). Keep green before "done".
+- **Data split (owner-confirmed, do not relitigate):** Yahoo `adj_close` = ONLY
+  backtest price source (Groww candles are split-adjusted but NOT dividend/demerger-
+  adjusted — measured: RELIANCE +8.7% gap = Jio demerger, ITC +3.7% = hotels).
+  Groww = live quotes, ALL F&O data, instrument master, intraday, and the ARBITER
+  for disputed prints (receipt: RL-17's fabricated 2019-12 Yahoo ETF prints).
+  Yahoo ETF series MUST pass `xasset_trend.clean_prices` (transient-spike guard).
+- Machine: Windows 11, TZ = UTC+3 (IST = local +2:30). NSE cash close 15:30 IST.
 
-## 3. Research state — what's been found
+## 3. Research state (13 studies resolved 2026-07-09; see research_log for detail)
 
-Universe: current Nifty 500 → 277 total-return stocks from 2010; test 2017-01-01+; 20 bps;
-monthly; `ret_clip=0.40` (winsorize glitches). Survivorship: current-membership → inflates
-long-only; disclosed. **The key benchmark is EQUAL-WEIGHT-277 (test Sharpe 1.35), not just
-cap-weighted Nifty (0.89)** — any broad long book beats Nifty on the breadth premium, so
-"beats Nifty" alone is NOT selection skill; use a PAIRED active-return t-test vs EW.
+**Deployed / promoted:**
+- **REGIME long-only** (RL-10/11): top-decile conviction momentum + (200MA OR
+  India-VIX) overlay. Test SR 1.865, +35.7%/yr, maxDD −27.2%. Currently risk-OFF.
+- **F&O L/S sleeve** (RL-12): resid-mom dollar-neutral, shorts ∩ 210 F&O names.
+  SR 0.846, β −0.000, maxDD −16.3%. Shortability costs only 0.02 Sharpe.
+- **Multi-asset trend sleeve** (RL-17, promoted diversifier): tsmom+invvol on
+  NIFTYBEES/JUNIORBEES/BANKBEES/GOLDBEES/MON100. SR 1.057, corr(REGIME) 0.357.
 
-**Best deployable strategy (long-only):** top-decile **conviction** momentum
-(`blend.conviction_topq` on `composite{mom_12_1, sharpe_mom, resid_mom}`) + a **regime
-overlay** that de-risks when Nifty < 200-day MA **OR** India-VIX is in its top 20%
-(`blend.regime_on` / `blend.vix_calm`). Test Sharpe **1.86**, +35.7%/yr, maxDD **−27%**,
-sidesteps 2020. See `india_run.py` (the frozen family) and RL-2026-07-11.
+**Graveyard (do not re-test without new data):** bear-only reversal sleeve (RL-13);
+52w-strength (RL-14, 0.94 corr with momentum); risk-off low-beta/gold sleeve (RL-16,
+breaches DD cap / gold thesis wrong); three-book blend vs its return-level bar
+(RL-19 — frontier alternative, not upgrade); turn-of-month (RL-20, t=1.13);
+vol-target overlay (RL-21, binary overlay already owns vol-timing); ALL single-stock
+short-term reversal (RL-11/13, cost-gated); sector rotation (RL-11).
 
-**Honest bounds (do not overclaim):**
-- Beats Nifty, but the RETURN edge over EW-277 is the breadth/size premium. Concentration
-  recovers a REAL but not-quite-significant momentum selection edge (paired active-t vs EW
-  ~0 at the quintile → ~1.3 at the decile; still < the t≥2 bar). The overlay's genuine
-  add is risk-adjusted (drawdown/beta), significant as CAPM alpha vs EW (t≈3).
-- **0 of ~50 trials clear the strict Deflated Sharpe bar** — consistent with the whole lab.
-- Cleanest PURE alpha = market-neutral **residual-momentum long-short** (Sharpe 0.86,
-  uncorrelated, ~5%/yr, DSR-fails).
+**Forward programs (evidence accrues daily, first reads locked):**
+- RL-15 F&O collector (basis ~210 names, NIFTY PCR/ATM-IV/skew) — read at 126 days.
+- RL-18 paper short straddle (NIFTY weekly ATM, LTP marks) — read at 126 days.
+- RL-22 forward evals: E1 trend keeps promotion; E2 gold_lowbeta vs deployed
+  (Sharpe-diff z>1 + maxDD); E3 invvol blend from ledgers (Sharpe-diff z>1).
+- RL-25 intraday 5-min bar archive (NIFTY + nifty100) — Groww retains only ~90
+  trailing days, so the archive is the ONLY path to future ORB/VWAP studies
+  (own registrations, no read before ≥12 months of bars, realistic intraday costs).
 
-**Documented negatives:** sector rotation ties EW (not promoted); ALL short-term
-(daily/weekly) books are cost-gated — real gross reversal edge (~0.65) killed by ~130%/wk
-turnover; even bear-only reversal is ~break-even at 20 bps. See `short_term*.py`.
+## 4. Daily operation (the owner's one command)
 
-## 4. Live / forward track (read-only)
-
-- `live_paper.py` — reconstructs the current REGIME book, fetches live Groww LTP
-  (read-only, get_ltp only, batched ≤50), records book vs Nifty, appends to
-  `experiments/paper_trades.jsonl`. Verified live 2026-07-09 (risk-OFF, 55/55 quotes).
-- Run manually: `PYTHONIOENCODING=utf-8 PYTHONPATH=src uv run python -m quantlab.live_paper --refresh`.
-- Daily scheduling: `scripts/paper_snapshot.cmd` + `scripts/README-schedule.md`. The user
-  registers the Windows task themselves (OS persistence needs their authorization) at
-  13:30 local (16:00 IST). Machine TZ = UTC+3; IST = UTC+5:30.
+`uv run python scripts/snapshot.py` (any cwd, no env vars; `--no-refresh` to skip
+the Yahoo pull). Runs guarded legs feeding SIX ledgers under `experiments/`:
+`paper_trades.jsonl` (REGIME), `paper_trades_ls.jsonl` (L/S),
+`paper_trades_trend.jsonl`, `paper_trades_gl.jsonl` (RL-16-flagged variant),
+`fno_daily.jsonl`, `paper_options.jsonl` (+ `intraday_archive.jsonl` audit once
+RL-25 lands), then prints the forward records. Missed days are safe (books drift;
+last row per panel date wins). Ledgers are committed; `data/raw/` bulk is not —
+the intraday archive lives ONLY on this machine (back it up externally).
+`PERFORMANCE.md` is generated: `uv run python -m quantlab.report` (never hand-edit).
 
 ## 5. Open threads (ranked)
 
-1. **Forward paper-track hardening:** upgrade `live_paper` to log the held WEIGHTS so the
-   rigorous forward return (book decided day D, realized D+1) is computable exactly, not
-   just the same-day diagnostic. Then accumulate the OOS record — the only clean test left.
-2. **Deployable market-neutral sleeve:** make residual-momentum L/S implementable — short
-   leg restricted to F&O-shortable names (Groww instrument master has the flags), price the
-   futures basis carry. Measures how much shortability destroys the 0.86 Sharpe.
-3. **F&O / options strategies (Groww-enabled):** futures basis cross-section, put-call
-   ratio, IV skew (`get_option_chain`/`get_greeks`). Groww CASH daily history is deep
-   (~2002+, split-adjusted) but NOT dividend/demerger-adjusted. F&O measured 2026-07-09:
-   live contracts serve candles over their ~3-month life; EXPIRED contracts are NOT
-   resolvable ("provide correct trading symbol" — master lists live only) → basis/IV/PCR
-   are FORWARD-ONLY. Collector + pre-registered forward hypotheses: RL-2026-07-15. See
-   RL-2026-07-11 planning notes and the Fable batch (B1–B8, G1–G5) referenced there.
-4. **Regime-conditional reversal sleeve:** bear-only reversal is marginal standalone but
-   uncorrelated with the long-only book (active only when it's defensive) — test as a small
-   combined sleeve, pre-registered.
-5. **Survivorship kill:** the honest ceiling on long-only claims. Needs point-in-time index
-   membership or a delisted-inclusive universe — no free source; flag as needing a paid feed.
+1. **In flight (verify → fill log → commit when they land):** RL-2026-07-23 band
+   mean reversion (band_mr.py), RL-2026-07-24 VIX rebound overlay (vix_rebound.py),
+   RL-2026-07-25 intraday archive (intraday_collect.py + snapshot leg + first
+   ~90-day pass).
+2. **Keep the daily snapshot running** — the forward ledgers are the lab's only
+   clean evidence; every missed day is evidence lost.
+3. **~Jan 2027:** the locked first reads (RL-15/18/22 E1-E3) — evaluate exactly as
+   registered, BH-FDR across the family, no peeking before the mark.
+4. **Paid-data wishlist (owner's wallet):** point-in-time index membership
+   (survivorship — the honest ceiling on all long-only claims), earnings
+   dates+surprises (PEAD), historical options/intraday depth.
+5. Idea triage notes: fundamentals/PEAD data-blocked; ORB/VWAP wait on the archive;
+   anything resembling the graveyard needs NEW data to justify a re-test.
 
 ## 6. Files
 
-- `research_log.md` — the study (RL-2026-07-10 result + RL-2026-07-11 refinements). Truth.
-- `CLAUDE.md` — conventions + module map. `protocol.md` — the honesty rules.
-- `src/quantlab/`: `india.py` (universe/panel), `india_run.py` (frozen 9-strategy family +
-  sweep), `blend.py` (composite/conviction/overlays/regime), `india_scenarios.py`
-  (`evaluate2`: paired-t + CAPM vs Nifty AND EW, regime/sub-period slices), `short_term.py`
-  (short-term family), `groww_client.py` (read-only client), `live_paper.py` (forward track).
-- `experiments/log.jsonl` — run ledger; `experiments/paper_trades.jsonl` — forward snapshots.
+- `research_log.md` — the study record (truth). `protocol.md` — honesty rules.
+- `PERFORMANCE.md` — generated overview. `progress.md` — running state log.
+- `src/quantlab/`: `india_run.py`/`blend.py` (REGIME construction),
+  `india_ls.py` (L/S), `xasset_trend.py` (trend sleeve + `clean_prices` guard +
+  `base_returns`), `riskoff_sleeve.py` (RL-16 + gl-variant construction),
+  `blend_portfolio.py` (RL-19), `tom_study.py`, `volmgmt_study.py`, `h52_study.py`,
+  `bear_sleeve.py`, `live_paper.py` (all paper-tracks + forward_track),
+  `fno_collect.py`, `paper_options.py`, `report.py`, `groww_client.py` (read-only).
+- `experiments/log.jsonl` — run ledger (every study row carries hypothesis_ref).
