@@ -935,6 +935,105 @@ explicitly.
 
 ---
 
+## RL-2026-07-16 - Risk-off sleeve: what should the defensive half own instead of cash?
+
+- **Date (pre-registration):** 2026-07-09
+- **Economic hypothesis:** The deployable REGIME book parks ~50% in zero-return cash
+  whenever the (200MA OR India-VIX) overlay fires (~1/5 of days, including TODAY).
+  Flight-to-safety assets historically outperform cash exactly then: gold in INR
+  (global risk-off bid + rupee depreciation in stress; GOLDBEES.NS total-return
+  history to 2009) and low-beta defensive stocks (betting-against-beta pays in
+  drawdowns even though unconditional low-vol failed on train in the bull decade —
+  the CONDITIONAL claim is different and untested here). Replacing risk-off cash
+  with a defensive sleeve should raise the combined Sharpe without materially
+  worsening drawdown.
+- **Sample (locked):** the RL-2026-07-10/11 panel (N500-277 from 2010, ret_clip
+  0.40) + GOLDBEES.NS adj_close; TRAIN 2010→2016-12-31, TEST 2017-01-01→now (ONE
+  read; window re-use honesty flag); monthly where applicable, overlay switches as
+  the deployed book does; 20 bps headline (10/40 checks).
+- **Specification:** base = the deployed book (top-decile conviction momentum +
+  overlay). The ONLY change: on risk-off days the freed weight (1 − book gross)
+  goes to a sleeve instead of cash. Variants (all locked now, ONE chosen on TRAIN
+  then frozen for a single test read): (a) cash [baseline = deployed], (b) gold —
+  GOLDBEES held only while its own 200d trend is positive, else cash (avoids
+  holding falling gold), (c) low-beta decile — inverse-vol weights on the panel's
+  lowest-beta decile, (d) 50/50 gold+low-beta. Causality: all switches use
+  prior-day signals, as the deployed overlay does.
+- **Predicted outcome:** modest improvement — combined test SR 1.86 → 1.90–2.00
+  with equal-or-better maxDD if gold carries its historical stress bid; a wash is
+  plausible (~40%); low-beta-only likely adds equity beta back in crashes and
+  underperforms gold. Deployment bar: paired-t of the daily difference vs the
+  deployed book > 1 AND maxDD not worse by more than 2 points, robust at 10/40 bps.
+
+<!-- filled in AFTER the run -->
+- **Result:**
+- **Conclusion:**
+
+---
+
+## RL-2026-07-17 - Multi-asset trend sleeve on Indian-accessible ETFs (long-term)
+
+- **Date (pre-registration):** 2026-07-09
+- **Economic hypothesis:** Time-series momentum is the best-documented cross-asset
+  anomaly (Moskowitz–Ooi–Pedersen); a retail-implementable Indian version uses NSE
+  ETFs spanning distinct return sources: NIFTYBEES (large-cap equity), JUNIORBEES
+  (next-50), BANKBEES (banks), GOLDBEES (gold in INR), MON100 (Nasdaq-100 in INR,
+  adds USD + global tech). Trend-gating each asset (long when its own trend is up,
+  else cash) should produce positive risk-adjusted returns with only moderate
+  correlation to the deployed equity book (gold + USD legs diversify INR equity
+  stress). The sleeve's VALUE is as a portfolio diversifier, not a Sharpe contest.
+- **Sample (locked):** the five ETFs above, Yahoo adj_close (depths measured
+  2026-07-09: four from 2009, MON100 from 2011-03 — pre-inception = no position,
+  disclosed); TRAIN 2010→2016-12-31, TEST 2017-01-01→now (ONE read; window re-use
+  flag); monthly rebalance; 20 bps (10/40 checks).
+- **Specification:** per-asset trend gate chosen on TRAIN from exactly two locked
+  variants: 12-1 TSMOM sign vs price>200d-MA (`trend.py` primitives). Weighting
+  chosen on TRAIN from exactly two locked variants: equal-weight vs inverse-vol
+  (126d). Gated assets earn cash (0) when off. FREEZE both choices on TRAIN
+  combined Sharpe, then one test read: standalone stats + correlation with the
+  deployed REGIME book and with the F&O L/S sleeve.
+- **Predicted outcome:** test SR 0.8–1.2, maxDD −10…−20%, corr(deployed book)
+  0.3–0.5 (equity legs dominate it). Promotion bar (to a later, separately
+  registered portfolio-blend study): standalone SR ≥ 0.8 AND corr < 0.5 at 20 bps.
+  A miss on either is a valid negative.
+
+<!-- filled in AFTER the run -->
+- **Result:**
+- **Conclusion:**
+
+---
+
+## RL-2026-07-18 - Paper options book: NIFTY weekly short straddle (short-term, forward-only)
+
+- **Date (pre-registration):** 2026-07-09
+- **Economic hypothesis:** Index options embed a variance risk premium — implied vol
+  exceeds subsequently realized vol on average, compensating crash insurance
+  sellers. Indian weekly NIFTY options are liquid and the RL-15 collector already
+  records the chain daily. A systematically SHORT ATM straddle harvests the premium
+  with a fat LEFT tail — expected: positive median day, occasional large losses.
+  Options history is unavailable (expired contracts unresolvable) so this is a
+  FORWARD-ONLY PAPER book from day one; no backtest exists or will be claimed.
+- **Specification (locked):** each run day, maintain ONE paper position: short 1
+  ATM straddle (CE+PE at the strike nearest spot) on the nearest weekly expiry
+  with ≥2 days to expiry; enter at chain LTPs; hold to expiry settlement (intrinsic
+  at expiry-day spot) or roll when dte<2; notional = 1 lot; daily mark-to-market
+  from chain LTPs appended to `experiments/paper_options.jsonl` (positions +
+  daily P&L + ATM IV + trailing 5d realized vol so the premium itself is recorded).
+  Marking at LTP (bid/ask not reliably available) is DISCLOSED as optimistic; no
+  delta-hedging in v1 (the book is a variance + gamma-path bet, disclosed). Paper
+  only by construction — the repo has no order path.
+- **Evaluation (locked):** first read at 126 collection days, alongside RL-15:
+  mean/median daily P&L, Sharpe of daily marks, worst day/week, realized-vs-implied
+  premium capture. Predicted: positive median, negative skew, Sharpe 0.5–1.5 in a
+  calm regime and severe drawdown in any vol spike — the tail is the point of
+  measuring before sizing.
+
+<!-- filled in AFTER the first 126-day read -->
+- **Result:**
+- **Conclusion:**
+
+---
+
 ## Template
 
 ```markdown

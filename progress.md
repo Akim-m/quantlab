@@ -48,6 +48,13 @@ setup; `research_log.md` is the study record (truth).
   paired-t +0.58 < 1). Redundant with momentum; not promoted. Receipt: the
   train-rejected gh_high looked better on test but with negative paired-t —
   freeze prevented test-peeking.
+- DONE: PERFORMANCE.md — generated overview (`python -m quantlab.report`):
+  deployed books rebuilt live (REGIME 1.865, L/S 0.846 — reproduce logged
+  values exactly), per-year + 2020-crash + risk-on/off slices, forward-track
+  status, graveyard. Documents-are-code: numbers recomputed, never typed.
+- IN PROGRESS (Opus x2): RL-2026-07-16 risk-off sleeve (cash vs gold vs
+  low-beta); RL-2026-07-17 multi-asset ETF trend sleeve. QUEUED: RL-2026-07-18
+  paper options book (pre-registered, forward-only).
 - DONE: RL-2026-07-15 — F&O forward-collection program. Measured: expired
   contracts unresolvable → basis/PCR/IV are FORWARD-ONLY; hypotheses (H1 basis
   x-section, H2 PCR extremes, H3 IV skew) pre-registered BEFORE day-one data;
