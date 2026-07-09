@@ -862,6 +862,23 @@ explicitly.
   diversification, not promoted," with the 50/50 blend roughly matching, not beating,
   momentum alone. Promotion requires the blend to beat the momentum book on Sharpe
   AND the paired t of the improvement > 1 — a bar we predict it misses.
+- **Result:** (run 2026-07-09, `h52_study.py`; log.jsonl RL-2026-07-14; orchestrator
+  re-verified every decision number independently — exact match.) TRAIN froze
+  `off_low` (train book SR 0.941, decile active +5.45%/yr) over George-Hwang
+  `gh_high` (0.890, decile active NEGATIVE −4.55% on train). Construction validated:
+  the momentum book under this code reproduces the deployed RL-07-11 headline
+  exactly (test SR 1.865, ann 35.7%, maxDD −27.2%). One test read @20 bps: H52 SR
+  1.571 (ann 33.8%, maxDD −50.6%, active-t vs EW 0.87), BLEND 1.776, MOM 1.865,
+  EW-277 1.347. Active-return correlation H52-vs-MOM = 0.944 (predicted ~0.6+;
+  realized far higher — same names, different label). Blend fails BOTH promotion
+  conditions: Sharpe 1.776 < 1.865 and paired-t of the improvement +0.58 < 1;
+  robust across 10/40 bps. Honesty receipt: the train-rejected gh_high variant
+  would have LOOKED better on test blend Sharpe (1.94) but with negative paired
+  mean-return t (−0.74) — the freeze prevented exactly that test-peeking trap.
+- **Conclusion:** failed (not promoted) — as predicted. 52w-strength is a real but
+  redundant expression of the momentum book (0.94 active correlation, double the
+  drawdown standalone). Tightens the finding that the deployed conviction-momentum
+  book already spans this anchor. +1 trial to the family; DSR verdict unchanged.
 
 ---
 

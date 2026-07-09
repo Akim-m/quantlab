@@ -42,9 +42,14 @@ setup; `research_log.md` is the study record (truth).
   credit sensitivity: +3%/yr → SR 1.08. TRAIN-frozen THIN short leg (FILL
   rejected — contaminates the long leg). Live L/S paper-track started on its
   own ledger (`paper_trades_ls.jsonl`, 196/196 quotes). Suite 168 green.
-- IN PROGRESS (Opus x2): RL-2026-07-13 bear-only reversal sleeve on the
-  deployable book; RL-2026-07-14 52-week strength book (both pre-registered
-  with predicted outcomes before dispatch; new-files-only isolation).
+- DONE: RL-2026-07-14 — 52w-strength book: NEGATIVE as predicted (verified by
+  orchestrator to the digit). off_low frozen on train; test H52 SR 1.57 vs MOM
+  1.87, active-corr 0.944, blend fails both promotion bars (1.776 < 1.865,
+  paired-t +0.58 < 1). Redundant with momentum; not promoted. Receipt: the
+  train-rejected gh_high looked better on test but with negative paired-t —
+  freeze prevented test-peeking.
+- IN PROGRESS (Opus): RL-2026-07-13 bear-only reversal sleeve on the
+  deployable book (pre-registered; new-files-only isolation).
 
 ## State as of RL-2026-07-11 (see research_log.md for full detail)
 
