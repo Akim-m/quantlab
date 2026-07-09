@@ -1158,8 +1158,19 @@ explicitly.
   decay is likely).
 
 <!-- filled in AFTER the run -->
-- **Result:**
-- **Conclusion:**
+- **Result:** (run 2026-07-09, `tom_study.py`; orchestrator re-verified all
+  decision numbers independently — exact match.) TRAIN froze (N=2, M=3)
+  (train SR 0.953 over (3,2) 0.816, (3,1) 0.814, (1,3) 0.553). Test read:
+  TOM-only SR 0.436 (+3.1%/yr) at 10 bps, collapsing to 0.11 at 20; B&H
+  NIFTYBEES 0.937. The effect is directionally present — window days earn
+  9.4 bps/day vs 4.2 outside (~2.2x) — but the two-sample t is 1.13 (p≈0.26),
+  far under the pre-registered t≥2, and the cash-heavy book gives up too much
+  upside sitting out ~75% of days. Every bar clause fails.
+- **Conclusion:** failed (not promoted) — the predicted-likely decay outcome.
+  Turn-of-month in Indian large-caps 2017–2026 is a real-signed but
+  statistically noisy tilt, not a strategy. Slots into the graveyard beside
+  the other calendar/short-horizon effects. +4 variants to the family (~76);
+  DSR verdict unchanged.
 
 ---
 
