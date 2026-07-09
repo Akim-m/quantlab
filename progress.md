@@ -2,6 +2,16 @@
 
 Running log of research + build state. Newest first.
 
+## 2026-07-09 (evening) — RL-23/24/25 wave
+
+- DONE: RL-2026-07-23 — index band mean reversion: FAILED DECISIVELY (verified
+  to the digit + independent z cross-check). Frozen (k=2, mean-touch); test SR
+  0.25 vs B&H 0.94; LW z −2.34 (significantly WORSE than B&H); maxDD −36.5% at
+  16.8% time invested — uncapped mean-touch exits ride falling knives.
+  Graveyard, stronger verdict than turn-of-month.
+- IN PROGRESS (Opus x2): RL-2026-07-24 VIX rebound overlay; RL-2026-07-25
+  intraday 5-min bar archive (first ~90-day pass + snapshot.py leg).
+
 ## 2026-07-09 (close) — forward program v2 (RL-2026-07-22)
 
 - DONE: trend sleeve + gold_lowbeta variant paper-tracks LIVE (orchestrator

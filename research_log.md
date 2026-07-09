@@ -1285,8 +1285,20 @@ explicitly.
   pass; a negative retires index mean-reversion timing alongside turn-of-month.
 
 <!-- filled in AFTER the run -->
-- **Result:**
-- **Conclusion:**
+- **Result:** (run 2026-07-09, `band_mr.py`; orchestrator re-verified all decision
+  numbers — exact, and cross-checked the LW z with an independent iid statistic,
+  −2.51 vs −2.34, same sign/scale.) TRAIN froze (k=2.0, mean-touch) (train SR
+  0.511 over the other three). Test: band book SR 0.253 (+2.0%/yr) at 10 bps,
+  maxDD −36.5% while invested only 16.8% of days (3.9 entries/yr); B&H 0.937.
+  Ledoit-Wolf z = −2.34/−2.66 at 10/20 bps — the book is SIGNIFICANTLY WORSE
+  than buy-and-hold, below even the weak prediction. Mechanism: entering at −2σ
+  with an uncapped mean-touch exit rides falling-knife crashes down to the mean
+  (2020-style) — the book concentrates exactly the drawdowns B&H spreads out.
+- **Conclusion:** failed, decisively — index mean-reversion timing joins
+  turn-of-month in the graveyard, and with a stronger verdict: not merely
+  insignificant but significantly harmful. Consistent with the lab's trend
+  evidence (Indian index risk premium rewards holding/trend, punishes
+  knife-catching). +4 variants to the family (~84); DSR verdict unchanged.
 
 ---
 

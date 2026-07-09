@@ -58,8 +58,9 @@ running state log. This file is the operating setup + current state + what to do
 52w-strength (RL-14, 0.94 corr with momentum); risk-off low-beta/gold sleeve (RL-16,
 breaches DD cap / gold thesis wrong); three-book blend vs its return-level bar
 (RL-19 — frontier alternative, not upgrade); turn-of-month (RL-20, t=1.13);
-vol-target overlay (RL-21, binary overlay already owns vol-timing); ALL single-stock
-short-term reversal (RL-11/13, cost-gated); sector rotation (RL-11).
+vol-target overlay (RL-21, binary overlay already owns vol-timing); index band
+mean reversion (RL-23, LW z −2.34 — significantly WORSE than B&H; knife-catching);
+ALL single-stock short-term reversal (RL-11/13, cost-gated); sector rotation (RL-11).
 
 **Forward programs (evidence accrues daily, first reads locked):**
 - RL-15 F&O collector (basis ~210 names, NIFTY PCR/ATM-IV/skew) — read at 126 days.
