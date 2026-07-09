@@ -12,6 +12,7 @@ disclosed; cross-sectional/relative signals are less sensitive to it than
 long-only absolute bets, and a broad-set robustness check reports the direction.
 """
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import csv
 import io
@@ -24,6 +25,7 @@ from .data import close_prices, load_yahoo_ohlcv
 INDEX_URL = "https://nsearchives.nseindia.com/content/indices/ind_{index}list.csv"
 BENCHMARK = "^NSEI"           # Nifty 50 price index (benchmark, not traded)
 TRADEABLE_BENCH = "NIFTYBEES.NS"  # Nifty ETF with dividends (deployable benchmark)
+_IST = timezone(timedelta(hours=5, minutes=30))
 
 
 def nse_index_symbols(index: str = "nifty200", cache_dir: str | Path = "data/raw",
@@ -55,6 +57,38 @@ def sector_map(index: str = "nifty500", cache_dir: str | Path = "data/raw") -> d
     rows = list(csv.DictReader(io.StringIO(path.read_text(encoding="utf-8", errors="replace"))))
     return {f"{r['Symbol'].strip()}.NS": r["Industry"].strip()
             for r in rows if r.get("Symbol") and r.get("Industry")}
+
+
+def groww_instruments(refresh: bool = False, cache_dir: str | Path = "data/raw") -> pd.DataFrame:
+    """The Groww NSE instrument master (read-only), cached per IST date under
+    `data/raw/` so same-day re-runs never refetch. Refreshes only if the day's
+    cache is missing or `refresh=True`."""
+    day = datetime.now(_IST).strftime("%Y-%m-%d")
+    path = Path(cache_dir) / f"groww_instruments_{day}.csv"
+    if not refresh and path.exists():
+        return pd.read_csv(path, low_memory=False)
+    from . import groww_client as gc
+    df = gc.call("get_all_instruments")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(path, index=False)
+    return df
+
+
+def fno_shortable(instruments: pd.DataFrame | None = None, refresh: bool = False) -> set[str]:
+    """F&O-shortable single stocks as Yahoo tickers (SYMBOL.NS).
+
+    The practical short universe in India is single-stock futures, so this is the
+    set of distinct underlyings of NSE FNO single-stock FUTURES (instrument_type
+    'FUT', segment 'FNO') that resolve to an NSE cash-equity (EQ) name. Requiring an
+    EQ match cleanly drops index futures (NIFTY, BANKNIFTY, MIDCPNIFTY, NIFTYNXT50,
+    ...) and the exchange's synthetic *NSETEST underlyings, neither of which has a
+    cash-equity row. `instruments` lets callers (and tests) pass a canned master."""
+    df = instruments if instruments is not None else groww_instruments(refresh=refresh)
+    idx = set(df.loc[df["instrument_type"] == "IDX", "trading_symbol"].astype(str))
+    eq = set(df[(df["instrument_type"] == "EQ") & (df["exchange"] == "NSE")]["trading_symbol"].astype(str))
+    fut = df[(df["instrument_type"] == "FUT") & (df["segment"] == "FNO") & (df["exchange"] == "NSE")]
+    names = fut["underlying_symbol"].dropna().astype(str).unique()
+    return {f"{u}.NS" for u in names if u in eq and u not in idx}
 
 
 def _winsorize_prices(px: pd.DataFrame, cap: float) -> pd.DataFrame:

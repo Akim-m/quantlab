@@ -245,3 +245,60 @@ def test_forward_track_drops_unpriced_symbol_without_renormalizing(tmp_path, mon
     # ZZZ dropped -> its 0.5 becomes cash (earns 0), NOT renormalized onto AAA:
     # book D1->D2 = 0.5 * (110/100 - 1) = 0.05, not the renormalized 0.10.
     assert daily["book"].iloc[1] == pytest.approx(0.05)
+
+
+def test_forward_track_coverage_uses_gross_for_ls(tmp_path, monkeypatch, capsys):
+    """A dollar-neutral book has net weight ~0; the coverage denominator must be GROSS
+    or the display divides by ~0. With a half-priced L/S book, gross coverage = 50%
+    (the old net-based code masked held==0 to a misleading 100%)."""
+    idx = pd.to_datetime(["2026-01-01", "2026-01-02"])
+    prices = pd.DataFrame({"AAA.NS": [100.0, 110.0], "^NSEI": [200.0, 200.0]}, index=idx)  # ZZZ unpriced
+    _use_prices(monkeypatch, prices)
+    p = tmp_path / "ls.jsonl"
+    _write_rows(p, [
+        {"panel_date": "2026-01-01", "weights": {"AAA.NS": 0.5, "ZZZ.NS": -0.5}},  # net 0, gross 1
+        {"panel_date": "2026-01-02", "weights": {"AAA.NS": 1.0}},
+    ])
+    daily = lp.forward_track(path=str(p), cost_bps=0.0)
+    # summary coverage = priced gross 0.5 / gross 1.0 = 50%; the old net denominator
+    # (held == 0) masked to a misleading "min 100.0%".
+    assert "min 50.0%" in capsys.readouterr().out
+    assert daily["book"].iloc[1] == pytest.approx(0.05)  # only AAA's half earns; short dropped
+
+
+# ---- run_ls: implementable L/S sleeve snapshot (signed weights, separate ledger) ----
+
+def _synthetic_ls_book():
+    return lp.Book(
+        weights=pd.Series({"AAA.NS": 0.5, "BBB.NS": -0.5}),  # long AAA, short BBB
+        regime_on=True, cash_frac=0.0,
+        latest_date=pd.Timestamp("2026-07-09"),
+        prev_close=pd.Series({"AAA.NS": 100.0, "BBB.NS": 40.0}),
+        nsei_prev_close=20000.0,
+    )
+
+
+def test_run_ls_signed_weights_separate_ledger_read_only(tmp_path, monkeypatch):
+    spy = Spy()
+    monkeypatch.setattr(gc, "call", spy)
+    monkeypatch.setattr(lp, "current_ls_book", lambda **kw: _synthetic_ls_book())
+
+    out = tmp_path / "paper_trades_ls.jsonl"
+    row = lp.run_ls(path=str(out), write=True)
+
+    # SAFETY: only read-only methods dispatched, none of them order methods.
+    assert spy.methods and set(spy.methods) <= set(lp.READ_METHODS)
+    assert not any(m in gc._ORDER_METHODS for m in spy.methods)
+
+    # signed weights preserved (short is negative), dollar-neutral gross/net schema.
+    assert row["weights"] == pytest.approx({"AAA.NS": 0.5, "BBB.NS": -0.5})
+    assert row["gross"] == pytest.approx(1.0) and row["net"] == pytest.approx(0.0)
+    assert row["n_long"] == 1 and row["n_short"] == 1
+    assert row["kind"] == "live_paper_ls_snapshot"
+    assert row["hypothesis_ref"] == "RL-2026-07-12"
+    # book_ret = 0.5*(110/100-1) + (-0.5)*(50/40-1) = 0.05 - 0.125 = -0.075 (short costs on an up move)
+    assert row["book_intraday_ret"] == pytest.approx(-0.075)
+
+    lines = out.read_text().strip().splitlines()
+    assert len(lines) == 1
+    assert json.loads(lines[0])["weights"]["BBB.NS"] == pytest.approx(-0.5)

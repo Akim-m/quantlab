@@ -47,6 +47,28 @@ def long_short(score: pd.DataFrame) -> pd.DataFrame:
     return _neutral(score.rank(axis=1))
 
 
+def fno_long_short(score: pd.DataFrame, shortable: set[str]) -> pd.DataFrame:
+    """Dollar-neutral, unit-gross L/S with the SHORT leg restricted to F&O names.
+
+    Starts from the unrestricted rank-demeaned book; the long leg is untouched (any
+    stock is buyable). The short leg keeps only names in `shortable` (RL-2026-07-12:
+    current single-stock-futures underlyings), then rescales so short gross equals
+    long gross. This masks the full-book shorts rather than re-ranking within F&O, so
+    a full-universe long can never be pulled into the short leg - the long side stays
+    bit-identical to the unrestricted book (the spec's "change ONLY the short-leg
+    universe"). See RL-2026-07-12 for why the re-rank-and-fill alternative was
+    rejected (it contaminates the long leg via long/short cancellation)."""
+    full = long_short(score)
+    long = full.clip(lower=0.0)
+    mask = pd.Series([1.0 if c in shortable else 0.0 for c in score.columns], index=score.columns)
+    short = full.clip(upper=0.0).mul(mask, axis=1)
+    lg, sg = long.sum(axis=1), (-short).sum(axis=1).replace(0.0, np.nan)
+    short = short.mul(lg / sg, axis=0).fillna(0.0)
+    book = long.add(short, fill_value=0.0)
+    gross = book.abs().sum(axis=1).replace(0.0, np.nan)
+    return book.div(gross, axis=0).fillna(0.0)
+
+
 def long_only_topq(
     score: pd.DataFrame,
     prices: pd.DataFrame,

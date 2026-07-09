@@ -34,11 +34,17 @@ setup; `research_log.md` is the study record (truth).
   carries the audit trail (asof_ist vs panel_date). TODO (small): forward_track
   should annotate days whose panel_date predates ledger inception as backfilled.
   Owner still needs to register the daily Windows task (`scripts/paper_snapshot.cmd`).
-- IN PROGRESS: RL-2026-07-12 (pre-registered) — implementable market-neutral
-  resid-mom L/S, shorts restricted to F&O futures underlyings (Groww master:
-  144k instruments, 948 FUT rows). Opus executing: TRAIN-frozen design, one test
-  read + disclosed sensitivities, live L/S paper harness on a SEPARATE ledger
-  (`experiments/paper_trades_ls.jsonl`), first live snapshot today.
+- DONE: RL-2026-07-12 — implementable market-neutral resid-mom L/S, F&O-only
+  shorts (210 shortable, 130/277 overlap). SURPRISE RESULT (verified by
+  orchestrator to the digit): the constraint costs only 0.020 Sharpe (0.866 →
+  0.846), ann/maxDD IMPROVE (+5.38%, −16.3%), beta −0.000; corr with REGIME
+  book +0.371; DSR 0.000 (fails strict bar, as everything here does). Carry
+  credit sensitivity: +3%/yr → SR 1.08. TRAIN-frozen THIN short leg (FILL
+  rejected — contaminates the long leg). Live L/S paper-track started on its
+  own ledger (`paper_trades_ls.jsonl`, 196/196 quotes). Suite 168 green.
+- IN PROGRESS (Opus x2): RL-2026-07-13 bear-only reversal sleeve on the
+  deployable book; RL-2026-07-14 52-week strength book (both pre-registered
+  with predicted outcomes before dispatch; new-files-only isolation).
 
 ## State as of RL-2026-07-11 (see research_log.md for full detail)
 

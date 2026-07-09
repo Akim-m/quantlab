@@ -755,8 +755,113 @@ explicitly.
   performance is ambiguous and stated as such.
 
 <!-- filled in AFTER the run -->
-- **Result:**
-- **Conclusion:**
+- **Result:** Ran on N500-277, 2010-01-04 -> 2026-07-09, test 2017-01-01, 20 bps both
+  legs (`india_ls.py`; `experiments/log.jsonl`, hypothesis_ref RL-2026-07-12). The
+  Groww instrument master (144,089 rows, cached read-only to `data/raw/`) gives **210
+  F&O-shortable single stocks** (NSE FNO single-stock FUTURES underlyings that resolve
+  to an NSE cash-equity row; index futures NIFTY/BANKNIFTY/MIDCPNIFTY/NIFTYNXT50/... and
+  the synthetic *NSETEST underlyings excluded), of which **130 overlap** the 277-stock
+  universe.
+  - **Frozen short-leg choice = THIN** (mask the unrestricted book's shorts to F&O
+    names, rescale short gross to long gross), decided on TRAIN (2010->2016) only. The
+    two candidates were statistically indistinguishable on TRAIN (Sharpe **0.951 thin
+    vs 0.975 fill**, delta 0.024 << the ~0.3 Sharpe SE), so the tie broke on principle:
+    THIN changes ONLY the short leg (long leg bit-identical to the unrestricted book,
+    diff 5e-18), whereas the re-rank "fill" alternative CONTAMINATES the long leg on
+    1625/4055 dates - a full-universe long can fall in the bottom half of the F&O
+    sub-universe and get a short weight, cancelling part of its long. THIN is also the
+    honest/conservative book (short exactly the worst names actually shortable, no
+    breadth padding). FILL rejected; not shipped.
+  - **One test read (20 bps):** unrestricted baseline LS-RESID2 (apples-to-apples, same
+    code/dates) test Sharpe **0.866**, t 2.64, ann +4.68%, maxDD -19.0%, CAPM beta vs
+    Nifty 0.017. F&O-only headline (LS-FNO-THIN) test Sharpe **0.846**, t 2.58, ann
+    **+5.38%**, maxDD **-16.3%**, CAPM beta **-0.000** (cleanly market-neutral), CAPM
+    alpha-t 2.58. **Degradation from the F&O constraint = only 0.020 Sharpe** - far less
+    than the pre-registered 0.5-0.7; the constrained book's return and drawdown actually
+    IMPROVED (the excluded small-cap shorts were adding risk without alpha).
+  - Correlation with the deployable REGIME long book (test window) = **+0.371** (partial
+    diversifier, not fully uncorrelated). **Deflated Sharpe 0.000** against the full
+    searched family (n_trials=32 factor+book Sharpes; cumulative India trials ~51) -
+    fails the strict bar, as every book in this lab does.
+  - **Disclosed sensitivities on the frozen weights** (short gross ~0.5): carry credit
+    +3%/yr -> Sharpe **1.081** (ann +6.99%), +5%/yr -> **1.237** (+8.07%); futures roll
+    drag 12 bps/yr -> 0.837; carry +3% net of roll -> 1.071; cost 10 bps -> 0.921, cost
+    40 bps -> **0.695**. Basis carry is the dominant lever; roll drag is negligible.
+  - **Forward paper-track STARTED:** `experiments/paper_trades_ls.jsonl` (separate ledger,
+    signed weights). First live snapshot 2026-07-09: gross 1.00, net 0.0000, 138 long /
+    58 short, all shorts F&O large-caps (WIPRO, TCS, ITC, TRENT, ...), 196/196 live Groww
+    quotes, intraday +0.48%. `live_paper.py run_ls` (read-only; get_ltp + get_all_instruments).
+- **Conclusion:** WORKED, better than predicted - and honestly bounded. Restricting the
+  residual-momentum L/S short leg to F&O-shortable names costs almost nothing (Sharpe
+  0.866 -> 0.846, a 0.02 haircut vs the feared 0.5-0.7), and the constrained sleeve is
+  a genuinely IMPLEMENTABLE market-neutral book: ~+5.4%/yr, CAPM beta ~0, drawdown -16%,
+  with single-stock-futures basis carry a large upside lever (+3-5% carry -> Sharpe
+  1.08-1.24) and survival even at 40 bps (0.70). The F&O universe is the liquid large/
+  mid-cap set, and resid-mom's short alpha lives there, not in the excluded small caps -
+  so shortability is NOT the binding constraint it was assumed to be. BUT it is NOT
+  statistically-proven alpha: DSR 0.000 (cumulative ~51 trials), t 2.58 clears a naive
+  bar but not the trials-aware one, the 2017-26 window is multi-use, and current F&O
+  membership applied through history overstates early-sample shortability (bias direction
+  on performance ambiguous). Promoted as a deployable, implementable market-neutral sleeve
+  with disclosed caveats; the forward paper-track (now live) is the only clean proof left.
+
+---
+
+## RL-2026-07-13 - Bear-only reversal as a small sleeve on the deployable book (thread #4)
+
+- **Date (pre-registration):** 2026-07-09
+- **Economic hypothesis:** Short-horizon reversal is a liquidity-provision premium that
+  concentrates in bear/panic regimes (RL-2026-07-11: bear-gated reversal net Sharpe
+  +0.32/+0.38 at 10 bps, ~break-even at 20; active ~21% of test days). Standalone it
+  fails costs — but it is active EXACTLY when the deployable REGIME book is de-risked
+  and holding ~50% idle cash, and its returns are uncorrelated with the long book.
+  Allocating a small fixed slice of the defensive cash to the bear-only reversal book
+  should improve the COMBINED book's risk-adjusted return without adding correlated risk.
+- **Sample (locked):** as RL-2026-07-10/11 — panel from 2010, TRAIN 2010→2016-12-31,
+  TEST 2017-01-01→now (one read; window heavily RE-USED, honesty flag). Sleeve on the
+  nifty100 subset (liquidity, as the RL-07-11 short-term family), weekly rebalance;
+  combined book rebalances as its components do. Costs 20 bps headline (10/40 checks).
+- **Specification:** combined book = REGIME conviction book + sleeve, where the sleeve
+  is ACTIVE only on days ^NSEI < its 200d MA, sized at a fixed fraction of NAV funded
+  from the defensive cash. Frozen inputs: existing `short_term.py` books (`rev5` /
+  `resid_rev`, vol-gated variants). TRAIN-only choices, then frozen: sleeve size (10%
+  vs 20% of NAV) and reversal variant. One test read of the combined book vs the
+  REGIME book alone: Sharpe, ann, maxDD, paired t on the return DIFFERENCE, sleeve
+  standalone contribution, correlation. DSR against the family.
+- **Predicted outcome:** modest improvement — combined Sharpe ~1.86→1.9±0.05, maxDD
+  equal or slightly better, sleeve adds ~+0.5–1.0%/yr; at 20 bps a wash is entirely
+  plausible and a NEGATIVE (no reliable improvement) verdict is the expected honest
+  outcome roughly half the time. Not deployable unless the paired t on the difference
+  is positive and the sleeve survives the 40 bps check without flipping sign.
+
+---
+
+## RL-2026-07-14 - 52-week strength long book (anchoring/underreaction)
+
+- **Date (pre-registration):** 2026-07-09
+- **Economic hypothesis:** Proximity to the 52-week high predicts returns (George &
+  Hwang 2004): investors anchor on the high and underreact to good news near it. The
+  lab's TRAIN-only experiment zero (RL-2026-07-11) already measured a real top-decile
+  gradient for the existing 52-week strength signal (`off_low`, +6.7%/yr active vs
+  EW-277 on TRAIN) — weaker than momentum's +13.7% but never taken to a book. The
+  open question is NOT whether it beats EW (momentum is stronger); it is whether a
+  52w-strength book DIVERSIFIES the deployed momentum book (different anchor, lower
+  active-return correlation) enough to improve a blend.
+- **Sample (locked):** identical panel/split to RL-2026-07-10/11; monthly; 20 bps
+  (10/40 checks); ret_clip=0.40. ONE test read (window re-use honesty flag).
+- **Specification:** same construction as the deployed book — `blend.conviction_topq`
+  top decile + (200MA OR India-VIX) regime overlay — on a 52w-strength signal.
+  TRAIN-only choice, then frozen: signal variant `off_low` (existing, ratio off the
+  252d low) vs George-Hwang `px / rolling_max(px, 252)` (proximity to the high).
+  One test read: standalone vs EW-277 (paired active-t) and vs the momentum conviction
+  book (active-return correlation); then a 50/50 signal-blend variant vs the momentum
+  book alone (pre-registered as the ONLY blend tried). DSR against the family.
+- **Predicted outcome:** standalone beats EW but below the momentum book (paired
+  active-t vs EW ~0.5–1.0, under the t≥2 bar); active-return correlation with momentum
+  HIGH (~0.6+) — the likely honest verdict is "real gradient, insufficient
+  diversification, not promoted," with the 50/50 blend roughly matching, not beating,
+  momentum alone. Promotion requires the blend to beat the momentum book on Sharpe
+  AND the paired t of the improvement > 1 — a bar we predict it misses.
 
 ---
 
