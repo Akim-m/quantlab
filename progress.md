@@ -26,10 +26,19 @@ setup; `research_log.md` is the study record (truth).
   lab's "~2020+ unadjusted" note: CASH daily to ~2002-07, split/bonus-adjusted,
   NOT dividend/demerger-adjusted; intraday depth ~90d. Live LTP entitlement OK.
   Propagated to CLAUDE.md, handoff.md, research_log.md addendum.
-- DONE: first live snapshot on this machine — 2026-07-09, risk_off, 50% cash,
-  55 names, 55/55 quotes, book −0.30% vs Nifty −1.46% intraday. Ledger started;
-  forward record needs a second snapshot day. Owner still needs to register the
-  daily Windows task (`scripts/paper_snapshot.cmd`).
+- DONE: first live snapshots on this machine — 2026-07-09, risk_off, 50% cash,
+  55 names, 55/55 quotes both runs. First forward numbers: book −0.41% vs Nifty
+  −1.43% (active +1.03%) over 3 tracked days, cost drag 0.11%. HONESTY CAVEAT:
+  both snapshots were taken 2026-07-09, so the 07-07/07-08 legs are RECONSTRUCTED
+  (causal but backfilled) — genuine forward evidence starts 2026-07-09. Ledger
+  carries the audit trail (asof_ist vs panel_date). TODO (small): forward_track
+  should annotate days whose panel_date predates ledger inception as backfilled.
+  Owner still needs to register the daily Windows task (`scripts/paper_snapshot.cmd`).
+- IN PROGRESS: RL-2026-07-12 (pre-registered) — implementable market-neutral
+  resid-mom L/S, shorts restricted to F&O futures underlyings (Groww master:
+  144k instruments, 948 FUT rows). Opus executing: TRAIN-frozen design, one test
+  read + disclosed sensitivities, live L/S paper harness on a SEPARATE ledger
+  (`experiments/paper_trades_ls.jsonl`), first live snapshot today.
 
 ## State as of RL-2026-07-11 (see research_log.md for full detail)
 

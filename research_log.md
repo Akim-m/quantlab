@@ -719,6 +719,47 @@ explicitly.
 
 ---
 
+## RL-2026-07-12 - Implementable market-neutral sleeve: resid-mom L/S with F&O-only shorts
+
+- **Date (pre-registration):** 2026-07-09
+- **Economic hypothesis:** The RL-2026-07-10 residual-momentum L/S (test SR 0.86,
+  ~5%/yr, market-neutral, uncorrelated with the long book) is deployable only if the
+  short leg is implementable. In India, practical single-name shorting beyond intraday
+  is via single-stock futures, so the NSE F&O list is the true short universe
+  (measured live 2026-07-09 from the Groww instrument master: 948 FUT instruments,
+  segment FNO; distinct single-stock underlyings to be reported by the run). Restricting
+  shorts to F&O names should DEGRADE but not destroy the edge: the short pool loses
+  breadth and the worst losers (small caps) are exactly the excluded names, but a short
+  futures position also EARNS basis carry (≈ repo − div yield > 0), offsetting part of
+  the lost alpha.
+- **Sample (locked):** identical to RL-2026-07-10 — N500-277 total-return universe from
+  2010 (Yahoo adj_close), TRAIN 2010→2016-12-31, TEST 2017-01-01→now (ONE read; the
+  window is heavily RE-USED — honesty flag; strict DSR verdict expected unchanged),
+  monthly rebalance, ret_clip=0.40.
+- **Preprocessing (locked):** as RL-2026-07-10 (same panel, same resid-mom signal from
+  `india_blend_study.raw_signals`).
+- **Specification:** the frozen resid-mom L/S construction from `india_run.py`, changed
+  ONLY in the short-leg universe: shorts drawn from the bottom signal ranks INTERSECTED
+  with current F&O single-stock-futures underlyings. Any choice needed to rebuild the
+  short leg (fill to full decile depth within F&O names vs accept a thinner leg) is
+  decided on TRAIN evidence only, frozen, then one test read. Headline costs: 20 bps
+  turnover on both legs (comparability with RL-07-10). Disclosed sensitivities, not
+  counted as extra trials: short-leg carry credit +0/+3%/+5% ann. on short gross;
+  futures roll drag 12 bps/yr; 10/40 bps cost check.
+- **Predicted outcome:** test SR degrades from 0.86 to ~0.5–0.7 F&O-only; carry credit
+  adds back roughly +1.5–2.5%/yr at 0.5 short gross. Expect real-but-below the strict
+  t≥2 / DSR bar; the deliverable is the DEGRADATION measurement plus a live forward
+  paper-track for the sleeve (separate ledger, `experiments/paper_trades_ls.jsonl`).
+- **Known limitation (disclosed):** current F&O membership applied through history (no
+  point-in-time F&O list) — overstates early-sample shortability; bias direction on
+  performance is ambiguous and stated as such.
+
+<!-- filled in AFTER the run -->
+- **Result:**
+- **Conclusion:**
+
+---
+
 ## Template
 
 ```markdown

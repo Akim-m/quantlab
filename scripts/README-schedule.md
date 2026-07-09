@@ -1,22 +1,34 @@
-# Forward paper-track — daily REGIME snapshot (read-only)
+# Forward paper-track — REGIME snapshot (read-only)
 
-`paper_snapshot.cmd` runs the RL-2026-07-10 live paper harness once: it rebuilds the
-current REGIME book, fetches **read-only** live Groww LTP for the held names, records
-the book's move vs Nifty, and appends one row to `experiments/paper_trades.jsonl`.
-Console/errors go to `experiments/paper_snapshot.log`. **It never places a trade** —
-the only Groww method it calls is `get_ltp`, through a wrapper that refuses order
-methods.
+Run this whenever you remember — any time after the 15:30 IST cash close, or during
+the session for an intraday mark:
 
-Requires the Groww `API_KEY`/`API_SECRET` in `.env` (git-ignored) and network. Uses
-`--refresh`, so it re-pulls the Yahoo panel first (~a few minutes).
+```
+uv run python scripts/snapshot.py               # refresh Yahoo, snapshot, show record
+uv run python scripts/snapshot.py --no-refresh  # skip the slow Yahoo pull
+```
 
-## Register the daily task (you run this — it needs your authorization)
+It rebuilds the current REGIME book, fetches **read-only** live Groww LTP for the held
+names, records the book's move vs Nifty, appends one row to
+`experiments/paper_trades.jsonl`, then prints the accumulated forward record. **It never
+places a trade** — the only Groww method it calls is `get_ltp`, through a wrapper that
+refuses order methods. It works from any working directory (it fixes its own paths and
+UTF-8 console), so no env vars are needed.
 
-Runs 13:30 local (= 16:00 IST, after the 15:30 cash close). In a terminal:
+Requires the Groww `API_KEY`/`API_SECRET` in `.env` (git-ignored) and network. The
+default `--refresh` re-pulls the Yahoo panel first (~a few minutes); `--no-refresh`
+uses the warm cache. Missed or irregular days are fine — the book drifts between
+snapshots and the forward track uses the last row per panel date.
+
+## Optional: register a daily Scheduled Task instead
+
+If you'd rather it run unattended, `paper_snapshot.cmd` wraps the same harness with
+`--refresh` and logs to `experiments/paper_snapshot.log`. Register it to run 13:30
+local (= 16:00 IST, after the cash close):
 
 ```
 schtasks /create /tn "QuantLab-REGIME-paper-snapshot" ^
-  /tr "C:\Users\aydhi\OneDrive\Documents\ay\quant\quantlab\scripts\paper_snapshot.cmd" ^
+  /tr "C:\Users\ahmad\Downloads\ay\quantlab\scripts\paper_snapshot.cmd" ^
   /sc DAILY /st 13:30 /f
 ```
 
@@ -28,15 +40,12 @@ schtasks /query  /tn "QuantLab-REGIME-paper-snapshot"   REM status
 schtasks /delete /tn "QuantLab-REGIME-paper-snapshot" /f  REM remove
 ```
 
-Or run a snapshot manually any time:
-`PYTHONIOENCODING=utf-8 PYTHONPATH=src uv run python -m quantlab.live_paper --refresh`
-
 ## Honest caveats
 
-- The book is monthly-rebalanced with slow (12-1) momentum signals, so the recorded
-  same-day `book_intraday_ret` is a reasonable daily diagnostic; the **rigorous** forward
-  return is the book decided on day D realized over D+1 — read it from the snapshot
-  sequence, not a single row. (A weight-logging upgrade for exact forward attribution is
-  a small follow-up if you want it.)
+- The same-day `book_intraday_ret` is a daily diagnostic only. The **rigorous** forward
+  return (book decided day D, realized close D→D+1, costed) is what the printed forward
+  record shows — snapshots log the held weights, and `live_paper --forward` recomputes
+  the record from them at any time. Days whose panel_date predates the ledger's first
+  snapshot are reconstructed (causal, but not contemporaneous evidence).
 - Read-only only. This track record is the cleanest test of the strategy — it is genuine
   out-of-sample, immune to the survivorship / window-reuse caveats in `research_log.md`.
