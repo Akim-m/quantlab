@@ -1,11 +1,16 @@
 """Live paper-observation harness for the deployable Indian books.
 
-READ-ONLY. Two sleeves, separate ledgers: the RL-2026-07-10 long-only REGIME book
-(`run` -> `paper_trades.jsonl`) and the RL-2026-07-12 F&O-shortable residual-momentum
-long-short sleeve (`run_ls` -> `paper_trades_ls.jsonl`, signed weights). Each builds
-the current target book from (optionally refreshed) Yahoo history, fetches LIVE Groww
-LTP for the held names, computes the book's live intraday P&L, and APPENDS one
-snapshot row so daily re-runs accumulate a forward track record.
+READ-ONLY. Four sleeves, separate ledgers: the RL-2026-07-10 long-only REGIME book
+(`run` -> `paper_trades.jsonl`), the RL-2026-07-12 F&O-shortable residual-momentum
+long-short sleeve (`run_ls` -> `paper_trades_ls.jsonl`, signed weights), the
+RL-2026-07-17 multi-asset trend sleeve (`run_trend` -> `paper_trades_trend.jsonl`,
+five NSE ETFs, per-asset gate states), and the RL-2026-07-16-flagged gold_lowbeta
+risk-off variant (`run_gl` -> `paper_trades_gl.jsonl`, REGIME base + the 50/50
+trend-gated-GOLDBEES / low-beta sleeve filling the freed weight on risk-off days).
+Each builds the current target book from (optionally refreshed) Yahoo history via its
+study's own frozen construction, fetches LIVE Groww LTP for the held names, computes
+the book's live intraday P&L, and APPENDS one snapshot row so daily re-runs accumulate
+a forward track record.
 
 Nothing here mutates account state: only read-only market-data methods are called,
 through the rate-limited `quantlab.groww_client.call` wrapper that itself refuses
@@ -28,13 +33,15 @@ import pandas as pd
 
 from . import groww_client as gc
 from .backtest import backtest_weights
-from .blend import composite, fno_long_short, market_on
+from .blend import composite, fno_long_short, market_on, regime_on
 from .data import close_prices, load_yahoo_ohlcv
 from .india import fno_shortable, india_panel, sector_map
 from .india_blend_study import raw_signals
 from .india_ls import CORE as LS_CORE, WEIGHTS as LS_WEIGHTS
 from .india_run import _core_regime_band_ls
+from .riskoff_sleeve import GOLD, VIX_SYM, base_book, combined_book
 from .tracking import log_run
+from .xasset_trend import ETFS, FROZEN_GATE, FROZEN_WEIGHTING, etf_panel, sleeve_weights
 
 SEGMENT = "CASH"                       # NSE cash equity
 # read-only Groww methods this harness may route through gc.call (order methods are
@@ -45,6 +52,8 @@ BENCH = "^NSEI"                        # Nifty 50 price index, the forward-track
 IST = timezone(timedelta(hours=5, minutes=30))
 SNAPSHOT_PATH = "experiments/paper_trades.jsonl"
 LS_SNAPSHOT_PATH = "experiments/paper_trades_ls.jsonl"
+TREND_SNAPSHOT_PATH = "experiments/paper_trades_trend.jsonl"
+GL_SNAPSHOT_PATH = "experiments/paper_trades_gl.jsonl"
 
 
 def to_groww(yahoo_sym: str) -> str:
@@ -135,11 +144,12 @@ def nifty_intraday(nsei_prev_close: float) -> tuple[float | None, str | None]:
     return None, None
 
 
-def live_book_pnl(book: Book) -> tuple[float | None, int, int, str | None]:
+def live_book_pnl(book: Book) -> tuple[float | None, dict[str, float], int, int, str | None]:
     """Fetch live LTP for the held names and compute the book's signed intraday
     return vs each name's prev close. Works for long-only and signed L/S books
     alike (shorts have negative weight -> negative contribution on an up move).
-    Returns (book_ret_or_None, n_quotes_ok, n_names_requested, error_or_None)."""
+    Returns (book_ret_or_None, per_name_live_ret, n_quotes_ok, n_names_requested,
+    error_or_None)."""
     groww_syms = [to_groww(s) for s in book.weights.index]
     prices, err = fetch_ltp(groww_syms)
     live_ret = {s: prices[g] / book.prev_close[s] - 1.0
@@ -147,14 +157,14 @@ def live_book_pnl(book: Book) -> tuple[float | None, int, int, str | None]:
                 if g in prices and book.prev_close.get(s, 0)}
     n_ok = len(live_ret)
     book_ret = float(sum(book.weights[s] * r for s, r in live_ret.items())) if n_ok else None
-    return book_ret, n_ok, len(groww_syms), err
+    return book_ret, live_ret, n_ok, len(groww_syms), err
 
 
 def run(start: str = "2010-01-01", index: str = "nifty500", refresh: bool = False,
         path: str = SNAPSHOT_PATH, write: bool = True) -> dict:
     book = current_book(start=start, index=index, refresh=refresh)
     state = "risk_on" if book.regime_on else "risk_off"
-    book_ret, n_ok, n_req, err = live_book_pnl(book)
+    book_ret, _, n_ok, n_req, err = live_book_pnl(book)
     nifty_ret, proxy = nifty_intraday(book.nsei_prev_close)
 
     row = {
@@ -225,7 +235,7 @@ def run_ls(start: str = "2010-01-01", index: str = "nifty500", refresh: bool = F
     book = current_ls_book(start=start, index=index, refresh=refresh)
     gross, net = float(book.weights.abs().sum()), float(book.weights.sum())
     n_long, n_short = int((book.weights > 0).sum()), int((book.weights < 0).sum())
-    book_ret, n_ok, n_req, err = live_book_pnl(book)
+    book_ret, _, n_ok, n_req, err = live_book_pnl(book)
     nifty_ret, proxy = nifty_intraday(book.nsei_prev_close)
 
     row = {
@@ -255,6 +265,146 @@ def run_ls(start: str = "2010-01-01", index: str = "nifty500", refresh: bool = F
     else:
         print(f"live sleeve intraday {book_ret*100:+.2f}% (market-neutral target ~0); "
               f"quotes ok {n_ok}/{n_req}")
+    print(f"snapshot {'appended to '+path if write else 'NOT written (dry run)'}")
+    return row
+
+
+def current_trend_book(refresh: bool = False) -> tuple[Book, dict[str, bool]]:
+    """Reconstruct the RL-2026-07-17 5-ETF trend sleeve (frozen tsmom gate + inverse-vol
+    weights) on the latest cleaned panel date. Returns its long-only target weights and
+    each ETF's held/cash state (weight > 0 == its own trend is up and it is held)."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with np.errstate(all="ignore"):
+            px = etf_panel(refresh=refresh)
+            w_full = sleeve_weights(px, FROZEN_GATE, FROZEN_WEIGHTING).iloc[-1]
+
+    last = px.index[-1]
+    gates = {s: bool(w_full.get(s, 0.0) > 0) for s in ETFS}
+    w = w_full[w_full > 0].sort_values(ascending=False)
+
+    # Raw (unadjusted) close is the intraday baseline the raw Groww LTP compares to;
+    # the warm cache from etf_panel is reused (refresh=False here avoids a double pull).
+    raw = close_prices(load_yahoo_ohlcv(ETFS), field="close")[ETFS].reindex(px.index)
+    today = datetime.now(IST).date()
+    completed = raw[raw.index.map(lambda d: d.date() < today)]
+    prev_row = completed.iloc[-1] if len(completed) else raw.iloc[-1]
+
+    book = Book(weights=w, regime_on=bool(len(w) > 0), cash_frac=float(1.0 - w.sum()),
+                latest_date=last, prev_close=prev_row.reindex(w.index),
+                nsei_prev_close=float("nan"))
+    return book, gates
+
+
+def run_trend(refresh: bool = False, path: str = TREND_SNAPSHOT_PATH, write: bool = True) -> dict:
+    """Snapshot the RL-2026-07-17 multi-asset trend sleeve to its own ledger. Long-only,
+    weights sum to <=1 (cash for off-trend legs); forward_track-compatible."""
+    book, gates = current_trend_book(refresh=refresh)
+    book_ret, live_ret, n_ok, n_req, err = live_book_pnl(book)
+
+    row = {
+        "hypothesis_ref": "RL-2026-07-17", "kind": "live_paper_trend_snapshot",
+        "asof_ist": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S"),
+        "panel_date": str(book.latest_date.date()), "universe": "NSE-ETF5",
+        "cash_frac": round(book.cash_frac, 4),
+        "book_intraday_ret": None if book_ret is None else round(book_ret, 6),
+        "n_names": int(len(book.weights)), "n_quotes_ok": n_ok,
+        "groww_ok": err is None and n_ok > 0, "note": err or "ok",
+        "gate_states": gates,
+        "asset_intraday": {s: round(r, 6) for s, r in live_ret.items()},
+        "weights": {s: round(float(w), 6) for s, w in book.weights.items()},
+    }
+    if write:
+        log_run(row, path=path)
+
+    print(f"[TREND live paper] panel {row['panel_date']}  held={len(book.weights)}/5  "
+          f"cash={book.cash_frac:.0%}")
+    for s, wt in book.weights.items():
+        mv = live_ret.get(s)
+        mvs = "n/a" if mv is None else f"{mv*100:+.2f}%"
+        print(f"  {s:16s} {wt*100:6.2f}%  intraday {mvs}")
+    off = [s for s, on in gates.items() if not on]
+    print(f"off-trend (cash): {', '.join(off) if off else 'none'}")
+    if book_ret is None:
+        print(f"live sleeve P&L: UNAVAILABLE (quotes ok {n_ok}/{n_req}; {err})")
+    else:
+        print(f"live sleeve intraday {book_ret*100:+.2f}%; quotes ok {n_ok}/{n_req}")
+    print(f"snapshot {'appended to '+path if write else 'NOT written (dry run)'}")
+    return row
+
+
+def current_gl_book(refresh: bool = False) -> Book:
+    """Reconstruct the RL-2026-07-16 gold_lowbeta risk-off VARIANT of the deployed book:
+    the RL-16 base (top-decile conviction momentum scaled by the 200MA-or-VIX overlay)
+    plus the 50/50 trend-gated-GOLDBEES / low-beta sleeve filling the freed weight on
+    risk-off days. Reuses the study's frozen `base_book` and `combined_book` code path;
+    on a risk-off day (base fully in cash) the combined book is the pure sleeve."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with np.errstate(all="ignore"):
+            px, mkt, ohlcv, _ = india_panel(start="2010-01-01", index="nifty500",
+                                             ret_clip=0.40, refresh=refresh)
+            gold_data = load_yahoo_ohlcv([GOLD], refresh=refresh)
+            gold_adj = close_prices(gold_data)[GOLD].reindex(px.index).ffill()
+            vix = close_prices(load_yahoo_ohlcv([VIX_SYM], refresh=refresh))[VIX_SYM].reindex(px.index).ffill()
+            base = base_book(px, mkt, vix, sector_map("nifty500"))
+            pxa = px.copy()
+            pxa[GOLD] = gold_adj
+            book_w = combined_book("gold_lowbeta", px, pxa, mkt, gold_adj, base)
+            on = bool(regime_on(mkt, vix, 200, 252, 0.80).reindex(px.index).fillna(False).iloc[-1])
+
+    last = book_w.index[-1]
+    w = book_w.loc[last]
+    w = w[w > 1e-9].sort_values(ascending=False)
+
+    today = datetime.now(IST).date()
+    def _last_completed(obj):
+        c = obj[obj.index.map(lambda d: d.date() < today)]
+        return c.iloc[-1] if len(c) else obj.iloc[-1]
+    prev = _last_completed(ohlcv["close"]).copy()                 # raw close per panel name
+    prev[GOLD] = float(_last_completed(close_prices(gold_data, field="close")[GOLD]))
+    nsei_prev = mkt[mkt.index.map(lambda d: d.date() < today)]
+    nsei_prev_close = float(nsei_prev.iloc[-1] if len(nsei_prev) else mkt.iloc[-1])
+
+    return Book(weights=w, regime_on=on, cash_frac=float(1.0 - w.sum()), latest_date=last,
+                prev_close=prev.reindex(w.index), nsei_prev_close=nsei_prev_close)
+
+
+def run_gl(refresh: bool = False, path: str = GL_SNAPSHOT_PATH, write: bool = True) -> dict:
+    """Snapshot the gold_lowbeta risk-off variant to its own ledger. Long-only combined
+    book (gross ~1 on risk-off days, the GOLDBEES leg included); forward_track-compatible."""
+    book = current_gl_book(refresh=refresh)
+    state = "risk_on" if book.regime_on else "risk_off"
+    book_ret, _, n_ok, n_req, err = live_book_pnl(book)
+    nifty_ret, proxy = nifty_intraday(book.nsei_prev_close)
+    gross = float(book.weights.sum())
+
+    row = {
+        "hypothesis_ref": "RL-2026-07-16", "kind": "live_paper_gl_snapshot",
+        "asof_ist": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S"),
+        "panel_date": str(book.latest_date.date()), "universe": "NIFTY500+GOLDBEES",
+        "regime_state": state, "gross": round(gross, 4), "cash_frac": round(book.cash_frac, 4),
+        "gold_weight": round(float(book.weights.get(GOLD, 0.0)), 6),
+        "book_intraday_ret": None if book_ret is None else round(book_ret, 6),
+        "nifty_intraday_ret": None if nifty_ret is None else round(nifty_ret, 6),
+        "nifty_proxy": proxy, "n_names": int(len(book.weights)), "n_quotes_ok": n_ok,
+        "groww_ok": err is None and n_ok > 0, "note": err or "ok",
+        "weights": {s: round(float(w), 6) for s, w in book.weights.items()},
+    }
+    if write:
+        log_run(row, path=path)
+
+    print(f"[gold_lowbeta live paper] panel {row['panel_date']}  regime={state}  "
+          f"gross={gross:.2f}  names={len(book.weights)}  gold_leg={row['gold_weight']*100:.1f}%")
+    print("TOP 12 target holdings:")
+    for s, wt in book.weights.head(12).items():
+        print(f"  {s:16s} {wt*100:6.2f}%")
+    if book_ret is None:
+        print(f"live book P&L: UNAVAILABLE (quotes ok {n_ok}/{n_req}; {err})")
+    else:
+        nb = "n/a" if nifty_ret is None else f"{nifty_ret*100:+.2f}%"
+        print(f"live book intraday {book_ret*100:+.2f}% vs Nifty {nb} "
+              f"({proxy}); quotes ok {n_ok}/{n_req}")
     print(f"snapshot {'appended to '+path if write else 'NOT written (dry run)'}")
     return row
 
@@ -334,9 +484,10 @@ def forward_track(path: str = SNAPSHOT_PATH, cost_bps: float = 20.0,
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Live paper snapshot: REGIME long book or F&O L/S sleeve")
-    p.add_argument("--sleeve", choices=("regime", "ls"), default="regime",
-                   help="regime = RL-07-10 long-only book; ls = RL-07-12 F&O-shortable L/S")
+    p = argparse.ArgumentParser(description="Live paper snapshot for a deployable/forward book")
+    p.add_argument("--sleeve", choices=("regime", "ls", "trend", "gl"), default="regime",
+                   help="regime = RL-07-10 long-only book; ls = RL-07-12 F&O-shortable L/S; "
+                        "trend = RL-07-17 5-ETF trend sleeve; gl = RL-07-16 gold_lowbeta variant")
     p.add_argument("--start", default="2010-01-01")
     p.add_argument("--index", default="nifty500")
     p.add_argument("--refresh", action="store_true",
@@ -348,12 +499,20 @@ def main() -> None:
     p.add_argument("--cost-bps", type=float, default=20.0,
                    help="turnover cost for the forward report (default 20)")
     a = p.parse_args()
-    path = a.path or (LS_SNAPSHOT_PATH if a.sleeve == "ls" else SNAPSHOT_PATH)
+    paths = {"regime": SNAPSHOT_PATH, "ls": LS_SNAPSHOT_PATH,
+             "trend": TREND_SNAPSHOT_PATH, "gl": GL_SNAPSHOT_PATH}
+    path = a.path or paths[a.sleeve]
     if a.forward:
         forward_track(path=path, cost_bps=a.cost_bps, refresh=a.refresh)
         return
-    runner = run_ls if a.sleeve == "ls" else run
-    runner(start=a.start, index=a.index, refresh=a.refresh, path=path, write=not a.dry_run)
+    write = not a.dry_run
+    if a.sleeve == "trend":
+        run_trend(refresh=a.refresh, path=path, write=write)
+    elif a.sleeve == "gl":
+        run_gl(refresh=a.refresh, path=path, write=write)
+    else:
+        runner = run_ls if a.sleeve == "ls" else run
+        runner(start=a.start, index=a.index, refresh=a.refresh, path=path, write=write)
 
 
 if __name__ == "__main__":

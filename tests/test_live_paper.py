@@ -17,7 +17,8 @@ from quantlab import live_paper as lp
 class Spy:
     """Records every method name passed to groww_client.call and serves canned LTP."""
 
-    PRICES = {"NSE_AAA": 110.0, "NSE_BBB": 50.0, "NSE_NIFTY": 20200.0}
+    PRICES = {"NSE_AAA": 110.0, "NSE_BBB": 50.0, "NSE_NIFTY": 20200.0,
+              "NSE_NIFTYBEES": 110.0, "NSE_GOLDBEES": 66.0}
 
     def __init__(self):
         self.methods = []
@@ -302,3 +303,115 @@ def test_run_ls_signed_weights_separate_ledger_read_only(tmp_path, monkeypatch):
     lines = out.read_text().strip().splitlines()
     assert len(lines) == 1
     assert json.loads(lines[0])["weights"]["BBB.NS"] == pytest.approx(-0.5)
+
+
+# ---- run_trend: 5-ETF trend sleeve snapshot (long-only, per-asset gate states) ----
+
+def _synthetic_trend():
+    book = lp.Book(
+        weights=pd.Series({"NIFTYBEES.NS": 0.4, "GOLDBEES.NS": 0.3}),  # gross 0.7 <= 1
+        regime_on=True, cash_frac=0.3,
+        latest_date=pd.Timestamp("2026-07-08"),
+        prev_close=pd.Series({"NIFTYBEES.NS": 100.0, "GOLDBEES.NS": 60.0}),
+        nsei_prev_close=float("nan"),
+    )
+    gates = {"NIFTYBEES.NS": True, "JUNIORBEES.NS": False, "BANKBEES.NS": False,
+             "GOLDBEES.NS": True, "MON100.NS": True}
+    return book, gates
+
+
+def test_run_trend_read_only_gross_and_gates(tmp_path, monkeypatch):
+    spy = Spy()
+    monkeypatch.setattr(gc, "call", spy)
+    monkeypatch.setattr(lp, "current_trend_book", lambda **kw: _synthetic_trend())
+
+    out = tmp_path / "paper_trades_trend.jsonl"
+    row = lp.run_trend(path=str(out), write=True)
+
+    # SAFETY: only read-only methods dispatched, none of them order methods.
+    assert spy.methods and set(spy.methods) <= set(lp.READ_METHODS)
+    assert not any(m in gc._ORDER_METHODS for m in spy.methods)
+
+    assert sum(row["weights"].values()) == pytest.approx(0.7)   # long-only gross <= 1
+    assert row["weights"]["NIFTYBEES.NS"] == pytest.approx(0.4)
+    assert row["kind"] == "live_paper_trend_snapshot"
+    assert row["hypothesis_ref"] == "RL-2026-07-17"
+    # book_ret = 0.4*(110/100-1) + 0.3*(66/60-1) = 0.07
+    assert row["book_intraday_ret"] == pytest.approx(0.07)
+    assert row["asset_intraday"]["NIFTYBEES.NS"] == pytest.approx(0.10)
+    assert row["gate_states"]["BANKBEES.NS"] is False
+    assert row["gate_states"]["NIFTYBEES.NS"] is True
+    assert row["n_quotes_ok"] == 2 and row["n_names"] == 2
+
+    rec = json.loads(out.read_text().strip().splitlines()[0])
+    assert "panel_date" in rec and "weights" in rec            # forward_track-compatible
+
+
+def test_run_trend_records_book_only_when_quotes_unavailable(tmp_path, monkeypatch):
+    def boom(method, *a, **k):
+        raise RuntimeError("no entitlement")
+    monkeypatch.setattr(gc, "call", boom)
+    monkeypatch.setattr(lp, "current_trend_book", lambda **kw: _synthetic_trend())
+
+    out = tmp_path / "t.jsonl"
+    row = lp.run_trend(path=str(out), write=True)
+    assert row["book_intraday_ret"] is None        # no live P&L invented
+    assert row["asset_intraday"] == {}
+    assert row["n_quotes_ok"] == 0 and row["groww_ok"] is False
+    assert row["weights"] and row["gate_states"]   # book + gates still recorded
+    assert out.read_text().strip()                 # snapshot still written
+
+
+# ---- run_gl: gold_lowbeta risk-off variant snapshot (combined book incl. GOLDBEES) ----
+
+def _synthetic_gl():
+    return lp.Book(
+        weights=pd.Series({"GOLDBEES.NS": 0.5, "AAA.NS": 0.3, "BBB.NS": 0.2}),  # gross 1.0
+        regime_on=False, cash_frac=0.0,                                          # risk-off day
+        latest_date=pd.Timestamp("2026-07-08"),
+        prev_close=pd.Series({"GOLDBEES.NS": 60.0, "AAA.NS": 100.0, "BBB.NS": 40.0}),
+        nsei_prev_close=20000.0,
+    )
+
+
+def test_run_gl_read_only_gross_and_gold_leg(tmp_path, monkeypatch):
+    spy = Spy()
+    monkeypatch.setattr(gc, "call", spy)
+    monkeypatch.setattr(lp, "current_gl_book", lambda **kw: _synthetic_gl())
+
+    out = tmp_path / "paper_trades_gl.jsonl"
+    row = lp.run_gl(path=str(out), write=True)
+
+    # SAFETY: only read-only methods dispatched, none of them order methods.
+    assert spy.methods and set(spy.methods) <= set(lp.READ_METHODS)
+    assert not any(m in gc._ORDER_METHODS for m in spy.methods)
+
+    assert sum(row["weights"].values()) == pytest.approx(1.0)   # ~fully invested on risk-off
+    assert row["gross"] == pytest.approx(1.0)
+    assert row["gold_weight"] == pytest.approx(0.5)             # the GOLDBEES leg is recorded
+    assert row["regime_state"] == "risk_off"
+    assert row["kind"] == "live_paper_gl_snapshot"
+    assert row["hypothesis_ref"] == "RL-2026-07-16"
+    # book_ret = 0.5*(66/60-1) + 0.3*(110/100-1) + 0.2*(50/40-1) = 0.13
+    assert row["book_intraday_ret"] == pytest.approx(0.13)
+    assert row["nifty_intraday_ret"] == pytest.approx(0.01)
+    assert row["n_quotes_ok"] == 3 and row["n_names"] == 3
+
+    rec = json.loads(out.read_text().strip().splitlines()[0])
+    assert "panel_date" in rec and "weights" in rec            # forward_track-compatible
+    assert rec["weights"]["GOLDBEES.NS"] == pytest.approx(0.5)
+
+
+def test_run_gl_records_book_only_when_quotes_unavailable(tmp_path, monkeypatch):
+    def boom(method, *a, **k):
+        raise RuntimeError("no entitlement")
+    monkeypatch.setattr(gc, "call", boom)
+    monkeypatch.setattr(lp, "current_gl_book", lambda **kw: _synthetic_gl())
+
+    out = tmp_path / "g.jsonl"
+    row = lp.run_gl(path=str(out), write=True)
+    assert row["book_intraday_ret"] is None        # no live P&L invented
+    assert row["nifty_intraday_ret"] is None
+    assert row["n_quotes_ok"] == 0 and row["groww_ok"] is False
+    assert row["regime_state"] == "risk_off"       # book/regime still recorded
+    assert out.read_text().strip()                 # snapshot still written

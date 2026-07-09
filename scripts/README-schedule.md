@@ -8,20 +8,24 @@ uv run python scripts/snapshot.py               # refresh Yahoo, snapshot, show 
 uv run python scripts/snapshot.py --no-refresh  # skip the slow Yahoo pull
 ```
 
-One run snapshots **both** deployable books and prints both forward records: the
-long-only REGIME book (ledger `experiments/paper_trades.jsonl`) and the RL-2026-07-12
-F&O-shortable market-neutral L/S sleeve (ledger `experiments/paper_trades_ls.jsonl`).
-For each it rebuilds the current book, fetches **read-only** live Groww LTP for the held
-names, records the book's move vs Nifty, appends one row to that book's ledger, then
-prints the accumulated forward record. It also runs the RL-2026-07-15 F&O daily
+One run has **6 ledger-feeding legs then 4 forward reports**. It snapshots **all four**
+paper books — the long-only REGIME book (ledger `experiments/paper_trades.jsonl`), the
+RL-2026-07-12 F&O-shortable market-neutral L/S sleeve
+(`experiments/paper_trades_ls.jsonl`), the RL-2026-07-17 multi-asset trend sleeve
+(`experiments/paper_trades_trend.jsonl`), and the RL-2026-07-16 gold_lowbeta risk-off
+variant (`experiments/paper_trades_gl.jsonl`) — then runs the RL-2026-07-15 F&O daily
 collector (single-stock basis + NIFTY PCR/IV/skew, one row/day to
 `experiments/fno_daily.jsonl`) and marks the RL-2026-07-18 paper NIFTY short-straddle
-(daily mark/roll rows to `experiments/paper_options.jsonl`). Yahoo is pulled once (for the first book) and the
-second reuses the warm cache; a failure in one leg is printed and the run continues, so
-one book's hiccup never costs the other its snapshot. **It never places a trade** — the
-only Groww method it calls is `get_ltp`, through a wrapper that refuses order methods. It
-works from any working directory (it fixes its own paths and UTF-8 console), so no env
-vars are needed.
+(daily mark/roll rows to `experiments/paper_options.jsonl`); finally it prints the four
+accumulated forward records (one per snapshot ledger). For each book it rebuilds the
+current target weights via that study's frozen construction, fetches **read-only** live
+Groww LTP for the held names, records the book's intraday move, and appends one row to
+that book's ledger. Only the first (REGIME) leg pulls Yahoo when `--refresh` is set; the
+other three reuse the warm panel / ETF / gold caches on disk, so a full pull happens at
+most once. A failure in any leg is printed and the run continues, so one book's hiccup
+never costs the others their snapshot. **It never places a trade** — the only Groww
+method it calls is `get_ltp`, through a wrapper that refuses order methods. It works from
+any working directory (it fixes its own paths and UTF-8 console), so no env vars are needed.
 
 Requires the Groww `API_KEY`/`API_SECRET` in `.env` (git-ignored) and network. The
 default `--refresh` re-pulls the Yahoo panel first (~a few minutes); `--no-refresh`

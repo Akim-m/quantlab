@@ -2,6 +2,19 @@
 
 Running log of research + build state. Newest first.
 
+## 2026-07-09 (close) — forward program v2 (RL-2026-07-22)
+
+- DONE: trend sleeve + gold_lowbeta variant paper-tracks LIVE (orchestrator
+  verified recorded weights reproduce the frozen constructions exactly).
+  First rows 2026-07-09: trend held 3/5 ETFs (gross 0.50, +0.31% intraday);
+  gl variant risk-off book gross 1.0 incl. 50% GOLDBEES leg, +0.55% vs Nifty
+  +0.34%. snapshot.py = 6 ledger legs + 4 forward reports, SIX ledgers total.
+  Locked forward evaluations E1/E2/E3 (Sharpe-difference idiom per the RL-19
+  lesson) first-read ~Jan 2027 alongside RL-15/18. Suite 224.
+- Day summary (2026-07-09, Nifty +0.74%): REGIME +0.11% (risk-off, by
+  design); L/S +0.49% day one (spread, not direction); straddle day-one
+  −315 after an intraday −884; collector PCR 0.876→0.791 intraday.
+
 ## 2026-07-09 (late) — RL-19 blend + new study wave
 
 - DONE: RL-2026-07-19 — three-book blend: FAILED the locked bar (verified to

@@ -1223,6 +1223,45 @@ explicitly.
 
 ---
 
+## RL-2026-07-22 - Forward program v2: trend-sleeve paper-track + locked forward evaluations
+
+- **Date (pre-registration):** 2026-07-09
+- **Purpose:** the multi-asset trend sleeve (RL-2026-07-17, PROMOTED) has zero
+  forward evidence; and two flagged candidates from failed studies deserve cheap
+  forward confirmation instead of another hold-out read. This entry adds the
+  paper-tracks and LOCKS their evaluation protocols now, applying the RL-2026-07-19
+  lesson: every bar below is stated in the risk-adjusted idiom (Sharpe-difference /
+  drawdown), never a mean-return paired-t for a risk thesis.
+- **New paper-tracks (read-only, same safety properties as the existing ledgers):**
+  - (a) Multi-asset trend sleeve — frozen tsmom/invvol construction on the five
+    ETFs, live Groww LTPs, ledger `experiments/paper_trades_trend.jsonl`.
+  - (b) The RL-2026-07-16-flagged gold_lowbeta RISK-OFF VARIANT of the deployed
+    book (50/50 trend-gated GOLDBEES + low-beta decile filling the freed weight on
+    risk-off days) — observation only, no deployment claim; ledger
+    `experiments/paper_trades_gl.jsonl`.
+- **Locked forward evaluations (first read after ≥126 forward trading days from
+  2026-07-10, alongside RL-15/RL-18; then quarterly; no peeking):**
+  - **E1 (trend sleeve keeps promotion):** forward Sharpe > 0 AND realized
+    corr(REGIME ledger) < 0.5. A miss demotes it.
+  - **E2 (gold_lowbeta candidacy):** vs the deployed book's ledger — Ledoit-Wolf
+    Sharpe-difference z > 1 AND forward maxDD not worse. Pass → eligible for a
+    deployment registration; fail → the RL-16 verdict is confirmed and the flag
+    is retired.
+  - **E3 (blend, from ledgers):** the RL-19 frozen invvol blend (REGIME 0.21 /
+    L/S 0.48 / trend 0.31) COMPUTED from the component ledgers (no new ledger) —
+    Ledoit-Wolf Sharpe-difference z vs the REGIME ledger > 1. Pass → the blend is
+    a certified frontier alternative; fail → retired.
+- **Predicted outcomes:** E1 pass ~65% (trend is robust but 6 months is short);
+  E2 genuine coin-flip (~50%) — that is why it gets forward data, not another
+  hold-out read; E3 pass ~55% (the diversification is real; 126 days of Sharpe
+  estimation is noisy).
+
+<!-- filled in AFTER the first 126-day read -->
+- **Result:**
+- **Conclusion:**
+
+---
+
 ## Template
 
 ```markdown
