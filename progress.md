@@ -9,8 +9,13 @@ Running log of research + build state. Newest first.
   0.25 vs B&H 0.94; LW z −2.34 (significantly WORSE than B&H); maxDD −36.5% at
   16.8% time invested — uncapped mean-touch exits ride falling knives.
   Graveyard, stronger verdict than turn-of-month.
-- IN PROGRESS (Opus x2): RL-2026-07-24 VIX rebound overlay; RL-2026-07-25
-  intraday 5-min bar archive (first ~90-day pass + snapshot.py leg).
+- DONE: RL-2026-07-24 — VIX rebound overlay: FAILED (verified via independent
+  reconstruction, exact). Frozen p90/h10; recovery harvest REAL (+6.3pts/yr
+  return) but maxDD worsens 2.4pts and LW z ≈ 0 — re-entering receding panic
+  buys the recovery AND its residual drawdown. Third overlay study confirming
+  the deployed binary gate is hard to improve. 13-episode power disclosure.
+- IN PROGRESS (Opus): RL-2026-07-25 intraday 5-min bar archive (first
+  ~90-day pass + snapshot.py leg).
 
 ## 2026-07-09 (close) — forward program v2 (RL-2026-07-22)
 

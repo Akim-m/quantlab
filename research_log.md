@@ -1328,8 +1328,24 @@ explicitly.
   10/40. Prior ~40% pass given the episode count.
 
 <!-- filled in AFTER the run -->
-- **Result:**
-- **Conclusion:**
+- **Result:** (run 2026-07-09, `vix_rebound.py`; orchestrator re-verified via a
+  fully independent reconstruction from primitives — exact match on every
+  decision number.) Base reproduced bit-identically (1.865). TRAIN froze
+  p90/h10 (train SR 1.743 over the other three; base-alone 1.284). Test read
+  @20 bps: overlaid SR 1.842 vs base 1.865 (LW z −0.114 ≈ 0), ann +42.0% vs
+  +35.7% (the recovery harvest is REAL, +6.3 pts/yr), maxDD −29.6% vs −27.2%
+  (worse by 2.4 pts — breaches the 2-pt cap); same shape at 10/40. Power:
+  verdict rests on 13 re-entry episodes (374 override days) — the locked
+  disclosure applies. Temptation refused and disclosed: non-frozen p90/h21
+  showed z +0.69 but fails both clauses anyway; frozen verdict binds.
+  **deploy = FALSE at all costs.**
+- **Conclusion:** failed (the ~40%-prior honest negative) — but with a sharp
+  mechanism finding: re-entering while VIX recedes captures the recovery's
+  RETURN yet also its residual drawdown; risk-adjusted it's a wash and the
+  drawdown cap breaks. The binary overlay's patience (wait for calm, not for
+  receding panic) is again vindicated — third overlay study (RL-16, RL-21,
+  RL-24) to confirm the deployed gate is hard to improve. +4 trials (~88);
+  DSR verdict unchanged.
 
 ---
 
