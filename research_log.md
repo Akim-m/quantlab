@@ -1075,6 +1075,40 @@ explicitly.
 
 ---
 
+## RL-2026-07-19 - Portfolio blend: sizing REGIME + F&O L/S + multi-asset trend
+
+- **Date (pre-registration):** 2026-07-09
+- **Economic hypothesis:** The lab now holds three promoted books with low mutual
+  correlation (REGIME long-only SR 1.87; F&O L/S SR 0.85 at β≈0, corr 0.37 to
+  REGIME; multi-asset trend SR 1.06, corr 0.36 to REGIME / 0.14 to L/S).
+  Diversification math says a blend can carry the same return per unit risk with
+  a shallower worst drawdown than REGIME alone. The open question is sizing —
+  answered here ONLY with a-priori rules, never test-window optimization.
+- **Sample (locked):** the three books rebuilt via their frozen constructions
+  (india_run/blend REGIME; india_ls L/S; xasset_trend sleeve incl. its data
+  repair); TRAIN 2010→2016-12-31 for the sizing choice (MON100 partial, L/S
+  short universe uses the current F&O list — both disclosed as-is from their
+  studies); TEST 2017-01-01→now, ONE read; 20 bps headline (10/40 checks).
+  Returns-level blend, weights sum to 1 (fully-funded, conservative — the L/S
+  sleeve's margin efficiency is ignored; disclosed).
+- **Specification:** four locked sizing rules, ONE chosen on TRAIN combined
+  Sharpe then frozen: (a) 100% REGIME [baseline], (b) equal thirds,
+  (c) inverse-TRAIN-vol weights, (d) ERC on the TRAIN covariance of the three
+  books' daily returns. One test read: frozen blend vs REGIME-alone — Sharpe,
+  ann, maxDD, paired-t of the daily difference; all four rules' test rows shown
+  for disclosure, verdict binds to the frozen one.
+- **Predicted outcome:** blend SR 1.95–2.15 with maxDD improving 3–8 points on
+  REGIME's −27% (the two diversifiers cushion equity drawdowns); ann return
+  lower than REGIME alone (~25–30%/yr vs 35.7%) — the trade is return level for
+  risk-adjusted quality. Deployment bar: paired-t > 1 AND maxDD better or equal,
+  robust at 10/40 bps. Honest prior ~50% — REGIME's own Sharpe is a high hurdle.
+
+<!-- filled in AFTER the run -->
+- **Result:**
+- **Conclusion:**
+
+---
+
 ## Template
 
 ```markdown
