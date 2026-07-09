@@ -48,8 +48,12 @@ setup; `research_log.md` is the study record (truth).
   paired-t +0.58 < 1). Redundant with momentum; not promoted. Receipt: the
   train-rejected gh_high looked better on test but with negative paired-t —
   freeze prevented test-peeking.
-- IN PROGRESS (Opus): RL-2026-07-13 bear-only reversal sleeve on the
-  deployable book (pre-registered; new-files-only isolation).
+- DONE: RL-2026-07-13 — bear-only reversal sleeve: NEGATIVE (wash-to-drag),
+  the pre-registered coin-flip's honest side (verified by orchestrator to the
+  digit). All 6 configs below base on TRAIN at 20 bps; frozen least-drag
+  config on test: dSR −0.006 @20, −0.030 @40 (paired-t −3.91), worse maxDD at
+  every cost. Correlation premise held (~0.01) but returns can't fund costs.
+  CLOSES handoff thread #4: short-term reversal fully cost-gated in every form.
 
 ## State as of RL-2026-07-11 (see research_log.md for full detail)
 

@@ -833,6 +833,24 @@ explicitly.
   plausible and a NEGATIVE (no reliable improvement) verdict is the expected honest
   outcome roughly half the time. Not deployable unless the paired t on the difference
   is positive and the sleeve survives the 40 bps check without flipping sign.
+- **Result:** (run 2026-07-09, `bear_sleeve.py`; log.jsonl RL-2026-07-13; orchestrator
+  re-verified the 20/40 bps decision rows independently — exact match, and confirmed
+  the gated sleeve is structurally flat on all risk-on rebalance rows.) Base book
+  reproduced bit-for-bit (test SR 1.865/35.7%/−27.2%). TRAIN (2011→2016, disclosed
+  1-yr warmup deviation) already showed ALL 6 configs (3 variants × sizes 0.10/0.20)
+  BELOW base at 20 bps (dSR −0.013…−0.036); frozen the least-drag/most-diversifying
+  config (resid_rev, s=0.10) for the one test read. TEST: @10 bps dSR +0.006
+  (paired-t +1.12); @20 bps headline dSR **−0.006** (sleeve SR −0.23, paired-t
+  −0.69); @40 bps dSR −0.030 with sleeve return flipping hard negative (−4.9%/yr,
+  paired-t −3.91). Combined maxDD WORSE than base at every cost. Base–sleeve
+  correlation 0.006–0.026 — the diversification premise held; the returns don't.
+  Sleeve DSR 0.14 vs its variant family. Both pre-registered deployment gates fail.
+- **Conclusion:** failed (wash-to-drag) — the ~50%-likely negative the registration
+  flagged. Bear-only reversal's real gross edge cannot fund a sleeve at realistic
+  Indian costs even when deployed only from idle defensive cash; it doesn't even buy
+  drawdown protection. Closes handoff thread #4: short-term reversal is now fully
+  cost-gated in every tested form (always-on, bear-only standalone, and combined
+  sleeve). +6 disclosed configs to the trial tally; strict DSR verdict unchanged.
 
 ---
 
