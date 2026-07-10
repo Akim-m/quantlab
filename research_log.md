@@ -1601,6 +1601,232 @@ return-corr with the deployed REGIME book).
 
 ---
 
+## RL-2026-07-26 wave 2 - seven more (forward-only / blocked-pending-data, 2026-07-10)
+
+Second research wave (owner: "don't stop at 5, add and find more"). Every proposal is
+FORWARD-ONLY or BLOCKED-PENDING-DATA — **zero test-window reads** (family tally stays
+~92; only wave-1's -02 spent one). Idea space cross-checked in CODE against what the
+collector actually logs. Five ideas rejected with receipts: covered-call/buy-write
+(put-call-parity duplicate of -03), US ^VIX index gate (same slot as -02), FIP momentum
+(RL-14 redundancy), largecap→midcap lead-lag (special case of -01), NIFTY index-futures
+basis timing (hostile index-timing record + input not collected). Forward BH-FDR
+families: options {RL-18, -03, -06, -07}; F&O collector {H1-H3, -05, -04, -10, -12};
+equity-forward {-08, -09}; events {-11}.
+
+## RL-2026-07-26-06 - VRP-gated short volatility (conditional variance-premium harvest)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** the variance risk premium is time-varying and concentrates
+  when implied vol is rich vs realized (Bollerslev-Tauchen-Zhou 2009 — VRP is the
+  *conditional* compensation for variance risk). RL-18 (straddle) and -03 (put-write)
+  harvest it UNCONDITIONALLY; the claim is the harvest is materially better risk-adjusted
+  when the measured premium (ATM_IV − RV5d) is fat, and skipping thin-premium weeks avoids
+  the worst gamma losses. First conditioning study on the OPTIONS family (the RL-16/21/24
+  "overlay low-prior" receipt applies to the deployed equity gate, not here).
+- **Sample (locked):** NIFTY weekly ATM straddle = RL-18's frozen construction; signal
+  VRP_t = ATM_IV (fno/paper ledgers) − RV5d (`paper_options.realized_vol_5d`). Forward
+  clock from registration; first read ≥252 days, jointly with RL-18/-03 under BH-FDR. No
+  backtest (expired contracts unresolvable — RL-15).
+- **Preprocessing (locked):** VRP percentile on trailing 126 collection days, prior-day
+  info; marks at chain LTP (disclosed optimistic, RL-18 convention).
+- **Specification:** ONE variant, zero search — hold the RL-18 short straddle only while
+  VRP > its trailing-126d median, else flat. New book tag in `paper_options.jsonl`.
+- **Predicted outcome:** prior ~40-45% (best of wave 2, still sub-coin-flip — the gate
+  halves the sample; a wash is plausible and itself informative). Bar (conditional
+  risk-adjusted idiom): LW Sharpe-diff z of gated-vs-ungated synchronized daily marks > 1
+  AND gated worst-week not worse. **Classification: FORWARD-ONLY** (all inputs collected
+  daily; zero hold-out). Nearest: -03 (same premium source, but -03 is unconditional
+  equity-replacement; this is a timing claim gated-vs-ungated) / graveyard RL-21 (vol
+  conditioning, but that scaled an equity book by realized vol; here signal is IV−RV and
+  the asset is the premium). **BUILD NEXT.**
+
+<!-- filled in at the locked read -->
+- **Result:** (filled when the harness leg lands / at the locked read.)
+- **Conclusion:** pending forward evidence.
+
+## RL-2026-07-26-07 - NIFTY IV term-structure slope as a short-vol stress gate
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** the vol term structure inverts under stress (near-IV > far-IV)
+  and the slope prices the variance premium's term structure (Johnson 2017, JF): inversion
+  predicts elevated near-term realized vol and poor short-vol returns. The MATURITY axis is
+  untouched here — RL-15 H3 covers only moneyness (skew).
+- **Sample (locked):** NIFTY nearest-weekly ATM IV (already logged) + **next-monthly-expiry
+  ATM IV (NEW — one extra chain fetch/day in `fno_collect.py`)**. Slope = IV_far − IV_near.
+  First read ≥252 days after the extension goes live.
+- **Preprocessing (locked):** ATM strike nearest spot per expiry; slope in annualized IV
+  pts; no winsorization; prior-day info for gating.
+- **Specification:** ≤2 locked claims, one variant each — (i) signal validity: forward 5d
+  NIFTY realized vol higher after inversion (slope<0) days, two-sample t>2; (ii)
+  application: RL-18 straddle gated to slope≥0 improves worst-week/maxDD vs ungated, LW z
+  not worse than −0.5.
+- **Predicted outcome:** prior ~35% (i), ~25% (ii). Power disclosed up front: inversions
+  rare (~5-15% of days → ~12-40 events yr 1); a null at 252 days is weak, stated as such.
+  Bar: both clauses inside the options-family BH-FDR. **Classification: BLOCKED PENDING
+  DATA — confirm collector extension** (one added chain fetch/day, ~1 request, inside the
+  7 req/s budget); forward-only thereafter. Every day before the extension is unrecoverable
+  (archive-before-expiry logic, RL-25). Nearest: RL-15 H3 (moneyness vs maturity axis) /
+  graveyard RL-24 (VIX-shape timing of equity re-entry, not the short-vol book).
+  **BUILD NEXT — collector extension is time-urgent.**
+
+<!-- filled in at the locked read -->
+- **Result:** (filled once the collector logs far-expiry IV; then at the locked read.)
+- **Conclusion:** pending data + forward evidence.
+
+## RL-2026-07-26-08 - Macro-sensitivity alignment cross-section (USDINR + Brent betas)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** India is a net oil importer with a persistently depreciating
+  managed-float currency; single-stock USDINR/crude exposures are economically
+  heterogeneous (IT/pharma exporters gain from INR weakness; oil-marketers/aviation/paints
+  lose from crude spikes), and exchange-rate exposure is under-reacted-to at monthly
+  horizons (Adler-Dumas; Hong-Stein diffusion). Long names whose macro beta ALIGNS with
+  the prevailing macro trend, short the misaligned — dollar-neutral STANDALONE book, not an
+  index overlay. Macro series are genuinely NEW inputs to this lab.
+- **Sample (locked):** N500-277 (Yahoo adj_close, ret_clip 0.40, survivorship disclosed);
+  macro USDINR (`INR=X`), Brent (`BZ=F`; fallback `CL=F`). Forward-only paper signal
+  portfolio; history used for estimation warm-up ONLY, no historical performance read;
+  first read ≥252 forward days.
+- **Preprocessing (locked):** 252d rolling OLS betas on LAGGED macro returns; causality
+  clock: Brent settles after NSE close → macro returns enter at t−1 (the -02 discipline);
+  betas winsorized ±3 MAD.
+- **Specification:** ONE variant — alignment = β_INR·sign(USDINR 63d trend) +
+  β_oil·sign(−Brent 63d trend); decile L/S, equal-weight, monthly; paper ledger.
+- **Predicted outcome:** prior ~25-30% (daily-OLS betas noisy; the alignment interaction
+  compounds two estimations). Hold-out temptation (2013/2018/2022 in-window) considered and
+  REJECTED — prior too low for the 3-part test; monthly x-sec accrues forward adequately.
+  Bar (L/S spread idiom): net spread t>1.5 at 252 days, inside a wave-2 forward BH-FDR
+  family. **Classification: FORWARD-ONLY** (confirm `INR=X`/`BZ=F` depth in the Yahoo cache
+  before go-live; if either fails → BLOCKED PENDING DATA). Nearest: -02 (macro/cross-market,
+  but -02 times the INDEX; this is dollar-neutral stock selection, zero index-timing) /
+  graveyard 32-factor family (distinct — needs NEW input series, not another price transform).
+
+<!-- filled in at go-live / the locked read -->
+- **Result:** (filled after the `INR=X`/`BZ=F` cache check + at the read.)
+- **Conclusion:** pending data-confirm + forward evidence.
+
+## RL-2026-07-26-09 - Same-sector F&O cointegration pairs (relative value)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** economically twinned large-caps (HDFCBANK/ICICIBANK, TCS/INFY,
+  MARUTI/M&M, JSWSTEEL/TATASTEEL, …) share cash-flow drivers; idiosyncratic order-flow
+  shocks open temporary spread dislocations that revert (Gatev-Goetzmann-Rouwenhorst 2006).
+  HEDGED relative value — genuinely untested here (the 32-family `pairs` factor used US
+  symbols, excluded in every India run). Both legs ∩ the 210 F&O names (actually shortable,
+  RL-12).
+- **Sample (locked):** F&O ∩ N500 (130, RL-12), pairs formed WITHIN NSE industry; formation
+  (Engle-Granger + half-life<60d + spread-vol filter, top 10 pairs by in-formation
+  stability) FROZEN at registration, forward paper-track only — no historical P&L (formation
+  window contaminated by construction).
+- **Preprocessing (locked):** log-price spreads on adj_close; spread z on 63d rolling,
+  prior-day info; ret_clip 0.40.
+- **Specification:** ONE variant — enter |z|≥2 (long cheap/short rich, equal gross/leg),
+  exit z=0 or 30-day time stop; ≤10 concurrent pairs, equal capital.
+- **Predicted outcome:** prior ~20-25% (lab MR record uniformly hostile; pairs profitability
+  decayed post-2000s, Do-Faff; formation-selection overfit channel). Modal = cost-eaten
+  wash (~80 bps of pair gross per round trip vs 1.5-3% expected convergence). Bar
+  (hedged-spread idiom): at ≥252 days, combined pair-book net Sharpe>0 AND per-trade net
+  convergence t>1.5. **Classification: FORWARD-ONLY** (inputs exist today; formation frozen
+  at registration, trading strictly forward). Nearest: graveyard short-term reversal /
+  RL-23 band-MR (outright price-level bets; this is cross-hedged spread reversion between
+  cointegrated twins, weeks not days, market/sector risk netted) / -05 (futures curve vs
+  cash spreads).
+
+<!-- filled in at the locked read -->
+- **Result:** (filled at the ≥252-day read.)
+- **Conclusion:** pending forward evidence.
+
+## RL-2026-07-26-10 - Single-stock futures OI-positioning cross-section
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** open interest measures NET NEW POSITIONING, not activity: rising
+  OI + rising price = levered longs entering (continuation); rising OI + falling price =
+  shorts building (continuation); falling OI = unwinds (exhaustion). Hong-Yogo (JFE 2012):
+  futures OI growth predicts returns beyond price momentum in commodities; the standard
+  Indian F&O desk heuristic, never tested honestly here.
+- **Sample (locked):** ~210 F&O underlyings; signal = rank of sign(21d cash return) ×
+  21d fut1-OI growth; forward-only from the day the collector logs OI.
+- **Preprocessing (locked):** OI growth winsorized ±3 MAD cross-sectionally; names missing
+  fut1 OI excluded that day (-05 convention).
+- **Specification:** ONE variant — decile L/S, equal-weight, monthly; paper portfolio in the
+  RL-15 family.
+- **Predicted outcome:** prior ~30% (equity-SSF OI is dominated by hedging/arb inventory,
+  not speculative positioning — the commodity result may not transplant). Bar (L/S spread):
+  net spread t>1.5 in the RL-15 BH-FDR family (grows by one, disclosed). **Classification:
+  BLOCKED PENDING DATA — confirm source:** per-name futures OI is NOT in `fno_daily.jsonl`
+  today (verified in code — only NIFTY OI-PCR exists). Probe Groww futures `get_quote` for
+  an OI field, then extend the collector (piggyback the existing LTP calls if possible).
+  Forward-only thereafter; uncollected days lost. Nearest: -04/-05 (basis = a PRICE on the
+  curve; OI = a QUANTITY/positioning) / graveyard factor-32 volume_momentum (cash activity
+  vs open positioning — different object).
+
+<!-- filled in once OI is collected / at the read -->
+- **Result:** (filled after the OI-field probe + collector extension.)
+- **Conclusion:** pending data + forward evidence.
+
+## RL-2026-07-26-11 - F&O ban-list (MWPL) crowding events
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** NSE bans new F&O positions in a stock when aggregate OI crosses
+  95% of the market-wide position limit — the exchange itself flagging extreme crowding.
+  Ban entry after a run-up marks speculative saturation with a BINDING constraint (no new
+  longs; levered longs must eventually unwind) → predicted negative abnormal drift
+  post-ban-entry + elevated vol through the ban window. India-specific, structural, outside
+  the exhausted price-transform space.
+- **Sample (locked):** all names entering the ban list; forward collection from go-live
+  (NSE publishes daily; a clean historical archive, if confirmed, would allow a SEPARATELY
+  registered event study — not assumed).
+- **Preprocessing (locked):** abnormal return = stock − its NSE-industry EW peer basket
+  (survivorship-light event design); events overlapping <3 days deduped to first entry.
+- **Specification:** ONE variant — event = first day in the ban list; forward 5d/21d
+  abnormal returns + realized vol vs trailing-63d baseline; directional sub-hypothesis
+  (locked): events preceded by a positive 21d run underperform.
+- **Predicted outcome:** prior ~30% vol claim, ~20-25% directional. Power: ~30-80 events/yr;
+  a one-year read is thin, graded as such. Bar (event idiom): mean 21d abnormal return t>2
+  (directional) + vol elevation t>2 (risk), BH-FDR across the two. **Classification:
+  BLOCKED PENDING DATA — confirm source** (NSE daily ban-list feed + a scrape leg in the
+  snapshot; zero Groww dependency). Observational first; tradable form (avoid/underweight on
+  the L/S long leg, or a short screen) registered separately on a pass. Nearest: -04 (both
+  short-side crowding — but -04 uses a CONTINUOUS basis proxy on the sleeve's own shorts;
+  this uses the exchange's DISCRETE binding constraint) / graveyard short-term reversal
+  (structural forced-unwind, not generic price reversal; observational so the cost gate
+  doesn't apply yet).
+
+<!-- filled in once the ban-list feed is wired / at the read -->
+- **Result:** (filled after the ban-list feed is confirmed + wired.)
+- **Conclusion:** pending data + forward evidence.
+
+## RL-2026-07-26-12 - Basis-dispersion (limits-to-arbitrage) conditioning of the L/S sleeve
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** cross-sectional dispersion of single-stock basis (std of `b1`
+  across ~210 names — computable from day one of the existing collector) proxies
+  arbitrage-capital health: when carry arbitrageurs are impaired, dispersion blows out
+  (limits-to-arbitrage; Pasquariello dislocations). The F&O L/S sleeve is itself a
+  convergence-type book; its forward returns should be worse / more volatile in
+  high-dispersion states. Observational only — **the deployed sleeve is NOT touched**
+  (protocol §5), the -04 pattern.
+- **Sample (locked):** `fno_daily.jsonl` basis × the live `paper_trades_ls.jsonl` ledger —
+  both lab-generated forward data; reads at 126 days (thin, disclosed) and 252 days.
+- **Preprocessing (locked):** daily dispersion = cross-sectional std of `b1` over `fut1_ok`
+  names; trailing-126d percentile, prior-day info.
+- **Specification:** ONE split — sleeve forward 21d ledger return + vol in
+  top-quartile-dispersion states vs the rest.
+- **Predicted outcome:** prior ~25-30% (one year gives few independent 21d windows — power
+  disclosed). Bar (conditioning idiom): difference in mean forward 21d sleeve return
+  (top-quartile vs rest) t>1.5, vol difference reported. Pass → a separately registered
+  sizing rule; fail → retired. **Classification: FORWARD-ONLY** (zero new data, zero
+  hold-out). Nearest: -04 (observational conditioning of the same sleeve — but -04 filters
+  WHICH shorts at name level; this times HOW MUCH sleeve from an aggregate state) /
+  graveyard RL-16/21/24 overlay family (the reason the prior is low; distinct mechanism =
+  arbitrage-capital state, and a target book never studied for conditioning).
+
+<!-- filled in at the 126/252-day reads -->
+- **Result:** (filled at the locked reads.)
+- **Conclusion:** pending forward evidence.
+
+---
+
 ## Template
 
 ```markdown
