@@ -1481,9 +1481,28 @@ return-corr with the deployed REGIME book).
   forward track cannot evaluate it for years; new signal series; idiom-correct bar.
 
 <!-- filled in AFTER the run -->
-- **Result:** (run pending — `us_gate_study.py`; orchestrator to re-verify every
-  decision number by independent reconstruction before it enters the record.)
-- **Conclusion:** pending.
+- **Result:** (run 2026-07-10, `us_gate_study.py`, 5 tests green; orchestrator
+  re-verified via a FULLY INDEPENDENT reconstruction from primitives — rebuilt the
+  signal + alignment without the study's helpers; EXACT match on every decision
+  number.) TRAIN froze **ma200** (`^GSPC` px>200d MA), TRAIN SR 0.390 — argmax over
+  ret63 0.199 / ret21 0.189 / ret21_ma200 0.156. TEST 2017-01-01→2026-07-09 (frozen
+  ma200, 2353 days) @10 bps: net SR **1.043** vs B&H 0.935, ann **+11.5%** vs +13.5%,
+  maxDD **−20.8%** vs B&H **−36.3%**, turnover 56, **LW Sharpe-diff z +0.397**. @5 bps
+  z +0.501; @20 bps SR 0.987, z +0.190. Bar = LW z>1 @10 bps AND surviving 20 bps AND
+  maxDD better than B&H → z@10 0.397, z@20 0.190 (both ≪ 1), maxDD_better TRUE → **FAIL**.
+  Disclosure arm (NIFTYBEES gated by its OWN India 200d MA): SR 0.768, ann +7.8%, maxDD
+  −18.6%, LW z −0.551 — the US gate DOES add over the purely-local gate (higher Sharpe,
+  positive-though-subthreshold z where the local gate's is negative), but neither clears
+  the bar. No-look-ahead guard proven load-bearing: removing the one-US-day shift leaks a
+  same-day US close (position flips ON the flip date); the test asserts shift=1 acts only
+  the next NSE session and that shift=0 leaks. **deploy = FALSE at all costs.**
+- **Conclusion:** failed (the ~30%-prior honest negative) with a clean mechanism
+  finding: the US-trend gate genuinely reduces drawdown (−20.8% vs −36.3%) and edges
+  Sharpe above buy-and-hold, but the risk-adjusted improvement is statistically
+  indistinguishable from B&H (LW z < 0.5) — cross-market INDEX timing does not clear the
+  bar. It does dominate the purely-local 200MA gate (a minor positive worth recording).
+  Cross-market index timing retired. **+4 trials (family ~92); DSR verdict unchanged.**
+  This is the RL-26 wave's ONLY hold-out spend — the other candidates are forward-only.
 
 ## RL-2026-07-26-03 - NIFTY weekly cash-secured put-write paper book (PUT-W)
 
