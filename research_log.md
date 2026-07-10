@@ -1742,8 +1742,13 @@ equity-forward {-08, -09}; events {-11}.
   graveyard 32-factor family (distinct — needs NEW input series, not another price transform).
 
 <!-- filled in at go-live / the locked read -->
-- **Result:** (filled after the `INR=X`/`BZ=F` cache check + at the read.)
-- **Conclusion:** pending data-confirm + forward evidence.
+- **Result (data-confirm 2026-07-10 — PASS):** `INR=X` 2003-12→2026-07-10 (n=5863, 0 NaN,
+  zero |ret|>10% prints; TRAIN coverage from 2010-01-01). `BZ=F` 2007-07→2026-07-10
+  (n=4715, 0 NaN; 24 |ret|>10% days spot-checked = documented oil history — 2020-04
+  COVID, 2022-03 Ukraine, 2026-03/04 — genuine moves, NOT vendor spikes; the
+  `clean_prices` transient-spike guard applies at load per the RL-17 convention).
+  **UNBLOCKED → build proceeding.** No fallback to `CL=F` needed.
+- **Conclusion:** pending go-live + forward evidence.
 
 ## RL-2026-07-26-09 - Same-sector F&O cointegration pairs (relative value)
 
@@ -2144,6 +2149,98 @@ dividends.
 <!-- filled in at the locked read -->
 - **Result:** (filled at the read.)
 - **Conclusion:** pending forward evidence.
+
+## RL-2026-07-26 wave 4 - backtest-anchored additions (2026-07-10)
+
+Fourth wave, owner-directed ("work on more strategies; keep backtesting on available
+data"). Discipline: the 2017+ hold-out stays CLOSED (family ~92, zero new reads) — new
+candidates take the DUAL-ROT route instead: TRAIN design read → freeze → forward-only
+live book. Pre-registration data probes (quality checks only, no performance reads):
+(1) `INR=X` clean 2003→ (0 NaN, no >10% prints); `BZ=F` 2007→ (24 |ret|>10% days, all
+documented oil history — spike-guard applies) → **-08 UNBLOCKED**; (2) NSE
+`sec_bhavdata_full` 404s before ~2020, but the legacy MTO delivery files serve back to
+≥2011 (HTTP 200 at 2011-07-01, 53,888 bytes) → a TRAIN-depth delivery-% archive is
+buildable (-20). Considered and REJECTED without runs (implicit-search tally):
+seasonality / MAX-lottery / idio-vol / LT-reversal / BAB x-sec (all 32-family graveyard
+— no new data, no re-test per handoff §5); covered-call book (put-call parity makes it
+-03 PUT-W's twin); AMFI monthly-flow regime gate (monthly series → hopeless n for
+years); NIFTYBEES/JUNIORBEES index-pair MR (RL-23 knife-catching precedent + -09
+already owns hedged MR).
+
+## RL-2026-07-26-19 - Amihud illiquidity level cross-section (ILLIQ)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** Amihud (2002) — investors demand a premium for holding names
+  where a rupee of flow moves price more; |ret|/rupee-turnover LEVEL is the classic
+  proxy. Volume enters the lab's x-sec space only as a 5d/126d SHOCK (-15, attention
+  channel); the persistent-level premium (compensation channel) is untouched, and Yahoo
+  `.NS` volume passed the -15 QC (0.0% dev vs Groww, 20/20). India's retail-heavy
+  microstructure plausibly widens the premium; post-publication crowding argues against
+  — genuine uncertainty.
+- **Sample (locked):** N500-277 (adj_close returns, ret_clip 0.40; rupee turnover =
+  volume × unadjusted close). TRAIN design read 2010-01-01→2016-12-31 (freeze only —
+  NOT promotable evidence); the 2017+ hold-out is NOT read; forward paper book from
+  go-live, first read ≥252 forward days. Survivorship DISCLOSED as acute here:
+  current-membership bias inflates an illiquid-leg TRAIN spread; the forward read is
+  the only clean number.
+- **Preprocessing (locked):** daily illiq = |ret| / rupee turnover; zero/missing-volume
+  days masked; rolling mean over the variant lookback; log; winsorize ±3 MAD; names
+  with <60% valid days in the lookback excluded.
+- **Specification:** decile L/S long HIGH illiquidity, equal-weight, monthly,
+  dollar-neutral. TWO variants — lookback **63d vs 252d**; freeze = argmax TRAIN net
+  Sharpe at **40 bps** (the harsher cost arm is the honest default when the long leg is
+  by construction the least-liquid decile); 20/80 bps sensitivities disclosed at the
+  freeze.
+- **Predicted outcome:** prior ~25% (premium widely published and likely
+  size/liquidity-confounded; TRAIN number survivorship-inflated regardless of sign).
+  Illiquidity is persistent → turnover ~5-15%/mo, so cost-death is not the modal risk;
+  insignificance is. Bar (L/S spread idiom): forward net spread t>1.5 at ≥252 days
+  inside the equity-forward BH-FDR family {-08, -09, -13, -15, -19, -20}.
+  **Classification: TRAIN-design + FORWARD-ONLY** (the DUAL-ROT route; zero hold-out
+  spend). Nearest: -15 VOL-SHOCK (same raw input, orthogonal channel — level-premium vs
+  shock-attention; signal corr reported at go-live) / graveyard 32-family (price
+  transforms only, no volume x-sec).
+
+<!-- filled at the TRAIN freeze + go-live + the locked read -->
+- **Result:** (TRAIN freeze pending.)
+- **Conclusion:** pending.
+
+## RL-2026-07-26-20 - Delivery-percentage conviction cross-section (DELIV)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** NSE publishes per-name DELIVERABLE quantity daily — the
+  slice of volume actually settled and taken home rather than round-tripped intraday.
+  High delivery share = conviction/accumulation flow vs speculative churn
+  (Llorente-Michaely-Saar-Wang 2002: returns continue after informed-trading volume;
+  delivery is India's direct observable of it). A genuinely NON-PRICE input — the lab's
+  second after -13 dividends — with real TRAIN-window depth (MTO archive ≥2011, probe
+  receipt in the wave header).
+- **Sample (locked):** N500-277 ∩ MTO coverage (bare-symbol→`.NS` join on current
+  names; renames/gaps = disclosed coverage loss, coverage % reported at the freeze).
+  TRAIN design read 2011-07-01→2016-12-31 (start = probed archive floor; actual floor
+  measured during backfill and disclosed); the 2017+ hold-out is NOT read; forward from
+  go-live, first read ≥252 forward days. Archive under `data/raw/nse_mto/`
+  (git-ignored) + a daily collector leg.
+- **Preprocessing (locked):** delivery ratio = deliverable_qty / traded_qty ∈ (0,1];
+  days missing from MTO (bans/halts/fetch failures) left missing — no ffill beyond 3d;
+  ±3 MAD winsorize on the transformed signal; names with <60% valid days in the
+  lookback excluded.
+- **Specification:** decile L/S, equal-weight, monthly, dollar-neutral. THREE variants
+  — (a) LEVEL: 63d mean ratio, long high; (b) SHOCK: log(5d mean / 126d mean), long
+  high; (c) SIGNED-SHOCK: sign(5d return) × shock, long high (conviction-confirmed
+  moves continue). Freeze = argmax TRAIN net Sharpe at 20 bps; 40 bps sensitivity
+  disclosed.
+- **Predicted outcome:** prior ~25-30% (practitioner-popular in India → possibly
+  crowded; LEVEL may proxy inverse liquidity → signal corr vs -19 reported at go-live
+  and the weaker flagged). Bar (L/S spread idiom): forward net spread t>1.5 at ≥252
+  days, equity-forward BH-FDR family. **Classification: TRAIN-design + FORWARD-ONLY**
+  (zero hold-out spend). Nearest: -15 (volume QUANTITY vs volume QUALITY — delivery
+  splits the same day's volume by settlement outcome) / -19 (liquidity level; corr
+  check locked) / graveyard ToM (calendar mechanics, unrelated).
+
+<!-- filled at the backfill QC + TRAIN freeze + go-live + the locked read -->
+- **Result:** (backfill + TRAIN freeze pending.)
+- **Conclusion:** pending.
 
 ---
 
