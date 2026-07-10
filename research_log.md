@@ -1957,8 +1957,15 @@ dividends.
   nothing new if QC passes).
 
 <!-- filled in after the volume QC + at the read -->
-- **Result:** (filled after volume QC + the 252-day read.)
-- **Conclusion:** pending QC + forward evidence.
+- **Result (pre-flight volume QC, 2026-07-10 — PASS):** cross-validated Yahoo `.NS`
+  daily volume vs Groww daily candles (read-only), 20 diverse names (large-cap PSU,
+  private, mid, distressed), last ~15 common sessions. Median |yahoo/groww − 1| =
+  **0.0% on 20/20 names** (volumes identical in level); median rank-corr 0.989
+  (14/20 > 0.95 — the misses are rank ties among near-identical values, not data
+  disagreement). Yahoo volume is trustworthy for the shock signal. VOL-SHOCK is
+  UNBLOCKED (and -14's volume-confirmed variant (b) with it); the strategy itself
+  remains registered-not-built.
+- **Conclusion:** QC passed; pending build + forward evidence (252-day read).
 
 ## RL-2026-07-26-16 - F&O eligibility-change events (SSF-LIST)
 
