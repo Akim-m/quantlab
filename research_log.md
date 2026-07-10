@@ -1773,8 +1773,27 @@ equity-forward {-08, -09}; events {-11}.
   cash spreads).
 
 <!-- filled in at the locked read -->
-- **Result:** (filled at the ≥252-day read.)
-- **Conclusion:** pending forward evidence.
+- **Result (go-live 2026-07-10, `pairs_rv.py`):** formation run once and FROZEN as module
+  constants; 20 dedicated tests + full suite 356 green. Universe = the RL-12 F&O∩N500
+  130 names → 701 same-industry candidates over 2018-01-02→2026-07-09; three filters
+  (Engle-Granger ADF < −3.34 [minimal lag-1 ADF, MacKinnon ~5% cv, approximation
+  disclosed], AR(1) half-life < 60d, spread σ ≥ 0.5%) pass 59; top 10 frozen by
+  |ADF t|/half-life — economically coherent twins (JSWSTEEL/TATASTEEL, IOC/ONGC,
+  M&M/MARUTI, HDFCBANK/KOTAKBANK, BPCL/PETRONET, …). Orchestrator independently
+  re-derived JSWSTEEL/TATASTEEL from primitives: β 0.957 (exact), ADF −4.93 vs −4.90,
+  half-life ~41d, σ 1.51% (exact) — formation is real. NO historical P&L computed (the
+  formation window is contaminated by construction — only forward trading is evidence).
+  Live state machine: enter |z|≥2 (63d rolling z, frozen β, prior-day info), exit z=0
+  or 30d time stop, ≤10 concurrent, per-pair dollar-neutral gross 0.1. First row (panel
+  2026-07-09): **0/10 open — all spreads inside ±2** (closest HDFCBANK/KOTAKBANK z
+  +1.96), book all cash. Honest flags recorded: formation-selection overfit is the
+  registered risk; equal-dollar legs ≠ β-hedged (BAJFINANCE/KOTAKBANK β 2.56 carries
+  residual exposure); shared names (MARUTI, KOTAKBANK ×2) can stack to ±0.10; time-stop
+  re-entry adds churn (implemented literally per the registered spec); round trip ≈
+  80 bps of pair gross vs 1.5-3% expected convergence.
+- **Conclusion:** live and accruing (FORWARD-ONLY). Read at ≥252 forward days: combined
+  book net Sharpe > 0 AND per-trade net convergence t > 1.5, per the registered bar —
+  the modal predicted outcome remains a cost-eaten wash (~20-25% prior).
 
 ## RL-2026-07-26-10 - Single-stock futures OI-positioning cross-section
 

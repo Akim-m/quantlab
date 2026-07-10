@@ -34,6 +34,7 @@ import pandas as pd
 from . import divcarry
 from . import dualrot
 from . import groww_client as gc
+from . import pairs_rv
 from .backtest import backtest_weights
 from .blend import composite, fno_long_short, market_on, regime_on
 from .data import close_prices, load_yahoo_ohlcv
@@ -58,6 +59,7 @@ TREND_SNAPSHOT_PATH = "experiments/paper_trades_trend.jsonl"
 GL_SNAPSHOT_PATH = "experiments/paper_trades_gl.jsonl"
 DUALROT_SNAPSHOT_PATH = "experiments/paper_trades_dualrot.jsonl"
 DIVCARRY_SNAPSHOT_PATH = "experiments/paper_trades_divcarry.jsonl"
+PAIRS_SNAPSHOT_PATH = "experiments/paper_trades_pairs.jsonl"
 
 
 def to_groww(yahoo_sym: str) -> str:
@@ -465,6 +467,93 @@ def run_divcarry(start: str = "2010-01-01", index: str = "nifty500", refresh: bo
         print(f"live sleeve P&L: UNAVAILABLE (quotes ok {n_ok}/{n_req}; {err})")
     else:
         print(f"live sleeve intraday {book_ret*100:+.2f}% (dollar-neutral target ~0); "
+              f"quotes ok {n_ok}/{n_req}")
+    print(f"snapshot {'appended to '+path if write else 'NOT written (dry run)'}")
+    return row
+
+
+def _last_row(path: str) -> dict | None:
+    """The last JSON row of a ledger (the pairs harness's state), or None if absent/empty."""
+    p = Path(path)
+    if not p.exists():
+        return None
+    last = None
+    for line in p.read_text().splitlines():
+        if line.strip():
+            last = line
+    return json.loads(last) if last else None
+
+
+def current_pairs_book(prev_open: list[dict], refresh: bool = False
+                       ) -> tuple[Book, list[dict], dict[tuple[str, str], float]]:
+    """Reconstruct the RL-2026-07-26-09 cointegration-pairs book on the latest panel date.
+
+    Path-dependent: today's open pairs come from `prev_open` (the last ledger row's state)
+    plus today's rolling-63d z per FROZEN pair. Returns (book, open_pairs, z_now); the book
+    carries SIGNED equal-dollar weights (each open pair dollar-neutral, gross 0.1)."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with np.errstate(all="ignore"):
+            log_px, close_raw, mkt, _ = pairs_rv.build_panel(refresh=refresh)
+
+    dates = log_px.index
+    today = dates[-1]
+    z_now = pairs_rv.current_z(log_px)
+    open_pairs = pairs_rv.update_open_pairs(prev_open, z_now, dates, today)
+    w = pairs_rv.target_weights(open_pairs).sort_values(ascending=False)
+
+    today_date = datetime.now(IST).date()
+    completed = close_raw[close_raw.index.map(lambda d: d.date() < today_date)]
+    prev_row = completed.iloc[-1] if len(completed) else close_raw.iloc[-1]
+    nsei_prev = mkt[mkt.index.map(lambda d: d.date() < today_date)]
+    nsei_prev_close = float(nsei_prev.iloc[-1] if len(nsei_prev) else mkt.iloc[-1])
+
+    book = Book(weights=w, regime_on=bool(len(w) > 0), cash_frac=float(1.0 - w.abs().sum()),
+                latest_date=today, prev_close=prev_row.reindex(w.index),
+                nsei_prev_close=nsei_prev_close)
+    return book, open_pairs, z_now
+
+
+def run_pairs(refresh: bool = False, path: str = PAIRS_SNAPSHOT_PATH, write: bool = True) -> dict:
+    """Snapshot the cointegration-pairs relative-value book to its own ledger. Signed
+    equal-dollar legs, per-pair dollar-neutral (book net ~0, gross 0.1*n_open); the ledger
+    IS the state (last row's open_pairs drives today's transitions). forward_track-compatible."""
+    prev = _last_row(path)
+    prev_open = list((prev or {}).get("open_pairs", []))
+    book, open_pairs, z_now = current_pairs_book(prev_open, refresh=refresh)
+    gross, net = float(book.weights.abs().sum()), float(book.weights.sum())
+    book_ret, _, n_ok, n_req, err = live_book_pnl(book)
+    nifty_ret, proxy = nifty_intraday(book.nsei_prev_close)
+
+    row = {
+        "hypothesis_ref": "RL-2026-07-26-09", "kind": "live_paper_pairs_snapshot",
+        "asof_ist": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S"),
+        "panel_date": str(book.latest_date.date()), "universe": "F&O-cap-N500",
+        "open_pairs": open_pairs, "n_open": len(open_pairs),
+        "gross": round(gross, 4), "net": round(net, 6),
+        "book_intraday_ret": None if book_ret is None else round(book_ret, 6),
+        "nifty_intraday_ret": None if nifty_ret is None else round(nifty_ret, 6),
+        "nifty_proxy": proxy, "n_names": int(n_req), "n_quotes_ok": n_ok,
+        "quotes_ok": err is None and n_ok > 0, "groww_ok": err is None and n_ok > 0,
+        "note": err or "ok",
+        "weights": {s: round(float(w), 6) for s, w in book.weights.items()},
+    }
+    if write:
+        log_run(row, path=path)
+
+    print(f"[PAIRS-RV live paper] panel {row['panel_date']}  open={len(open_pairs)}/{pairs_rv.MAX_PAIRS}  "
+          f"gross={gross:.2f}  net={net:+.4f}")
+    for p in open_pairs:
+        z = z_now.get((p["a"], p["b"]))
+        zs = "n/a" if z is None else f"{z:+.2f}"
+        print(f"  {p['direction']:8s} {p['a']:14s}/{p['b']:14s}  z_entry={p['z_entry']:+.2f}  "
+              f"z_now={zs}  since {p['entry_date']}")
+    if not open_pairs:
+        print("  no open pairs (all spreads inside the +/-2 band) - book is all cash")
+    elif book_ret is None:
+        print(f"live book P&L: UNAVAILABLE (quotes ok {n_ok}/{n_req}; {err})")
+    else:
+        print(f"live book intraday {book_ret*100:+.2f}% (per-pair dollar-neutral); "
               f"quotes ok {n_ok}/{n_req}")
     print(f"snapshot {'appended to '+path if write else 'NOT written (dry run)'}")
     return row
