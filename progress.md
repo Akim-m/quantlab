@@ -2,6 +2,34 @@
 
 Running log of research + build state. Newest first.
 
+## 2026-07-10 — owner-directed autonomous new-strategy wave (RL-2026-07-26 family)
+
+- SETUP: daily snapshot run for 2026-07-10 (REGIME leg recovered after a transient
+  Yahoo connection reset; forward record 4 days book −0.42% vs Nifty −1.57%, active
+  +1.15%). Intraday storage repo `quantlab-intraday` pulled/cloned and today's +5,754
+  bars pushed (99e2e37..7df33a4). Six ledgers committed. F&O live 2026-07-10: NIFTY
+  PCR 1.23, ATM IV 10.1.
+- METHOD: Fable researcher + Opus auditor (read-only) → orchestrator reconcile →
+  Opus implementers → orchestrator independent re-derivation. ≤3 subagents, never
+  Sonnet/Haiku. Recovery loop (270s) as a rate-limit backstop. Commit+push per milestone.
+- REGISTERED 12 candidates (RL-2026-07-26-01..12), only -02 spends a hold-out read
+  (family ~92); rest FORWARD-ONLY or BLOCKED-PENDING-DATA. 7 ideas rejected with receipts.
+- DONE: **RL-2026-07-26-02 US-GATE** — ^GSPC US-close gate on NIFTYBEES: FAILED the bar
+  (verified to the digit by independent reconstruction; no-look-ahead guard proven
+  load-bearing). Test SR 1.043 vs B&H 0.935 but LW z +0.397@10bps / +0.190@20bps (≪1);
+  maxDD −20.8% vs −36.3%. Cross-market index timing retired; adds over the local gate but
+  doesn't clear. Honest negative (~30% prior). 5 tests.
+- DONE: **RL-2026-07-26-01 DUAL-ROT** — 5-ETF dual-momentum rotation, FORWARD-ONLY, LIVE.
+  Frozen K2/tsmom (TRAIN 0.693, argmax verified independently); first row 2026-07-09
+  GOLDBEES 50% + MON100 50% (12-1 rank verified from primitives). Own ledger
+  `paper_trades_dualrot.jsonl` + snapshot leg. First locked read ~2027-07. 20 tests.
+- SUITE: full pytest 266 green. Two seed ideas (overnight drift, single-stock TSMOM)
+  rejected in wave 1 with receipts. Data-integrity flags surfaced for owner (see below).
+- FOR OWNER: (1) RL-2026-07-11 has zero ledger rows — deployed SR 1.865 headline not
+  reproducible from experiments/log.jsonl; (2) duplicate REGIME rows with dsr 0.999 vs
+  0.01; (3) PERFORMANCE.md §4 "0 of ~50+ trials" stale (family ~92). Not touched — owner
+  call.
+
 ## 2026-07-09 (evening) — RL-23/24/25 wave
 
 - DONE: RL-2026-07-23 — index band mean reversion: FAILED DECISIVELY (verified
