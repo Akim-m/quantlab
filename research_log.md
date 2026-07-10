@@ -2287,8 +2287,39 @@ already owns hedged MR).
   check locked) / graveyard ToM (calendar mechanics, unrelated).
 
 <!-- filled at the backfill QC + TRAIN freeze + go-live + the locked read -->
-- **Result:** (backfill + TRAIN freeze pending.)
-- **Conclusion:** pending.
+- **Result (backfill + QC + TRAIN freeze + go-live 2026-07-10, `nse_mto.py` + `deliv.py`):**
+  Backfill: TRAIN 2011-07-01→2016-12-31 1354 ok / 82 404 (holidays) / 0 errors; live
+  2025-11-01→today 168 ok / 12 404; 1,522 files, 95.8 MB, manifest committed to the
+  archive dir (git-ignored, verified). Measured archive floor = 2011-07-01 (the probed
+  date). The 2017-01→2025-10 hold-out span was NEVER downloaded — physically absent by
+  design. **QC gate PASS:** (i) 7 names vs the modern `sec_bhavdata_full` on
+  2026-07-09: max disagreement 0.000000%; (ii) TRAIN-era hand check RELIANCE
+  2013-07-01 raw line `20,1035,RELIANCE,EQ,4685396,2829715,60.39` → 0.603944, matching
+  the orchestrator's independently-fetched copy of the same file parsed with separate
+  code; full-archive bounds: 0 values >1 across 3,609 symbols × 1,522 dates
+  (1,893 zero-delivery days investigated — genuine 100%-intraday sessions, kept).
+  Coverage: 241/277 matched, median valid-day 78.2% over TRAIN (renames = disclosed
+  loss). Dup EQ rows in old two-settlement files aggregated by summing quantities
+  before the ratio. **TRAIN design table** (net SR / t @20bps, @40bps): **LEVEL
+  0.914 (t 2.38) / 0.764 (t 1.99)**; SHOCK −0.124 / −0.743; SIGNED −1.013 / −1.675.
+  **FROZEN = LEVEL** (registered argmax @20bps, margin +1.04 SR) — and the two
+  attention-style variants are design-stage NEGATIVES on TRAIN (recorded; they count
+  in the trials tally). TRAIN number carries the survivorship caveat and is design
+  evidence only. Orchestrator verification: TRAIN table + coverage reproduced to the
+  digit on re-run; ABBOTINDIA.NS chain re-derived with an independent parser — raw
+  ratio 0.745378 (2026-07-10) and 63d mean 0.576741 to 2026-07-09, both EXACT.
+  First forward row (panel 2026-07-09): 27L/27S, gross 1.0, net 0, quotes 54/54,
+  intraday −0.72%; longs led by ABBOTINDIA/APOLLOHOSP/BHARTIARTL (high-conviction
+  low-churn names, economically sane). **Registered disclosures:** Spearman(DELIV
+  LEVEL, -19 ILLIQ) = **−0.214** — the inverse-liquidity confound did NOT materialize
+  (high-delivery names lean slightly MORE liquid); Spearman vs -15 VOL-SHOCK +0.223.
+  Ledgers: `experiments/paper_trades_deliv.jsonl`; 6 design rows in
+  `experiments/log.jsonl`; daily collector `collect_mto_today` wired as a snapshot
+  leg. 19 tests.
+- **Conclusion:** frozen LEVEL, live and accruing (TRAIN-design + FORWARD-ONLY; zero
+  hold-out spend). SHOCK and SIGNED-SHOCK retired at design stage with receipts.
+  First read ≥252 forward days: net spread t>1.5 inside the equity-forward BH-FDR
+  family.
 
 ---
 
