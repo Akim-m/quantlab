@@ -2321,6 +2321,46 @@ already owns hedged MR).
   First read ≥252 forward days: net spread t>1.5 inside the equity-forward BH-FDR
   family.
 
+## RL-2026-07-26-21 - Regime-conditional meta-allocator across live sleeves (META-ALLOC)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** the lab now runs 10 cash-equity paper sleeves with distinct
+  return drivers (directional momentum/trend vs market-neutral spread books). Directional
+  books earn in risk-on states and bleed in risk-off; neutral books are state-agnostic.
+  A state-conditional capital map should therefore improve the book-of-books
+  risk-adjusted return over any static mix — the owner's ask ("a system that reuses the
+  right strategy for the current market") stated as a falsifiable claim. Honest prior
+  pressure DOWN: three overlay studies (RL-16/21/24) failed to beat the simple binary
+  gate, and RL-19's blend was a frontier alternative, not an upgrade — the modal outcome
+  is META ≈ STATIC minus churn.
+- **Sample (locked):** the 10 cash-sleeve forward ledgers (REGIME, L/S, TREND, DUAL-ROT,
+  PAIRS, DIV-CARRY, VOL-SHOCK, ILLIQ, DELIV, MACRO-BETA; options books and the RL-16
+  gl-variant tracker excluded — different margining / not a promoted book). FORWARD-ONLY
+  from registration: no joint history exists (7 of 10 sleeves were born this week), so a
+  backtest is impossible by construction — zero hold-out spend. First read ≥252 forward
+  days.
+- **Preprocessing (locked):** state = the DEPLOYED gate verbatim, `blend.regime_on`
+  (^NSEI ≥ 200d MA AND ^INDIAVIX < causal rolling-252d 80th pct), prior-day information
+  (shift 1). No new estimation anywhere in the layer.
+- **Specification:** ONE variant + ONE baseline arm, both computed daily on the same
+  ledgers. META map (frozen): risk-ON → 70% directional (REGIME 50, TREND 12.5,
+  DUAL-ROT 7.5) + 30% neutral pool (EW across the 7 neutral sleeves); risk-OFF → 0%
+  directional + 60% neutral pool + 40% cash. BASELINE (frozen): STATIC 50/50
+  (directional EW / neutral EW), never re-mapped. Sleeve-level costs are already inside
+  every sleeve's forward record; meta-flip churn (~2 gate flips/yr × ≤70% capital ×
+  20 bps ≈ ~3 bps/yr) disclosed as un-modelled and re-estimated at the read.
+- **Predicted outcome:** prior ~20-25% (the overlay-failure wall). Bar (risk-adjusted
+  idiom per the RL-19 lesson): at ≥252 forward days, Sharpe(META) − Sharpe(STATIC) with
+  Ledoit-Wolf z > 1 AND maxDD(META) ≤ maxDD(STATIC) + 2 pts. **Classification:
+  FORWARD-ONLY.** Nearest: RL-19 blend (static frontier point; this adds the state
+  dimension) / RL-16/21/24 graveyard (overlays ON one book; this allocates ACROSS books
+  — different object, same failure risk, hence the low prior) / RL-22 E3 (static
+  inverse-vol blend eval already accruing — a second baseline available at the read).
+
+<!-- filled at go-live + the locked read -->
+- **Result:** (go-live pending.)
+- **Conclusion:** pending.
+
 ---
 
 ## Template
