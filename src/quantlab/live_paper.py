@@ -35,6 +35,7 @@ from . import divcarry
 from . import dualrot
 from . import groww_client as gc
 from . import pairs_rv
+from . import volshock
 from .backtest import backtest_weights
 from .blend import composite, fno_long_short, market_on, regime_on
 from .data import close_prices, load_yahoo_ohlcv
@@ -59,6 +60,7 @@ TREND_SNAPSHOT_PATH = "experiments/paper_trades_trend.jsonl"
 GL_SNAPSHOT_PATH = "experiments/paper_trades_gl.jsonl"
 DUALROT_SNAPSHOT_PATH = "experiments/paper_trades_dualrot.jsonl"
 DIVCARRY_SNAPSHOT_PATH = "experiments/paper_trades_divcarry.jsonl"
+VOLSHOCK_SNAPSHOT_PATH = "experiments/paper_trades_volshock.jsonl"
 PAIRS_SNAPSHOT_PATH = "experiments/paper_trades_pairs.jsonl"
 
 
@@ -472,6 +474,73 @@ def run_divcarry(start: str = "2010-01-01", index: str = "nifty500", refresh: bo
     return row
 
 
+def current_volshock_book(start: str = "2010-01-01", index: str = "nifty500",
+                          refresh: bool = False) -> Book:
+    """Reconstruct the RL-2026-07-26-15 turnover-shock decile L/S sleeve on the latest
+    panel date; SIGNED dollar-neutral weights (top-shock decile +, bottom -). The
+    intraday baseline is the raw (split-adjusted) close, matching the raw Groww LTP."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with np.errstate(all="ignore"):
+            close, volume = volshock.panels(start=start, index=index, refresh=refresh)
+            w_full = volshock.latest_weights(close, volume)
+            nsei = close_prices(load_yahoo_ohlcv([BENCH]))[BENCH].reindex(close.index).ffill()
+
+    last = close.index[-1]
+    w = w_full[w_full.abs() > 1e-12].sort_values(ascending=False)
+
+    today = datetime.now(IST).date()
+    completed = close[close.index.map(lambda d: d.date() < today)]
+    prev_row = completed.iloc[-1] if len(completed) else close.iloc[-1]
+    nsei_prev = nsei[nsei.index.map(lambda d: d.date() < today)]
+    nsei_prev_close = float(nsei_prev.iloc[-1] if len(nsei_prev) else nsei.iloc[-1])
+
+    return Book(weights=w, regime_on=bool(len(w) > 0),
+                cash_frac=float(1.0 - w.abs().sum()), latest_date=last,
+                prev_close=prev_row.reindex(w.index), nsei_prev_close=nsei_prev_close)
+
+
+def run_volshock(start: str = "2010-01-01", index: str = "nifty500", refresh: bool = False,
+                 path: str = VOLSHOCK_SNAPSHOT_PATH, write: bool = True) -> dict:
+    """Snapshot the turnover-shock decile L/S sleeve to its own ledger. Dollar-neutral
+    (net ~0, gross ~1); rows carry SIGNED weights (shorts negative). forward_track-compatible."""
+    book = current_volshock_book(start=start, index=index, refresh=refresh)
+    gross, net = float(book.weights.abs().sum()), float(book.weights.sum())
+    n_long, n_short = int((book.weights > 0).sum()), int((book.weights < 0).sum())
+    book_ret, _, n_ok, n_req, err = live_book_pnl(book)
+    nifty_ret, proxy = nifty_intraday(book.nsei_prev_close)
+
+    row = {
+        "hypothesis_ref": "RL-2026-07-26-15", "kind": "live_paper_volshock_snapshot",
+        "asof_ist": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S"),
+        "panel_date": str(book.latest_date.date()), "universe": index,
+        "gross": round(gross, 4), "net": round(net, 6),
+        "n_long": n_long, "n_short": n_short,
+        "book_intraday_ret": None if book_ret is None else round(book_ret, 6),
+        "nifty_intraday_ret": None if nifty_ret is None else round(nifty_ret, 6),
+        "nifty_proxy": proxy, "n_names": int(n_req), "n_quotes_ok": n_ok,
+        "groww_ok": err is None and n_ok > 0, "note": err or "ok",
+        "weights": {s: round(float(w), 6) for s, w in book.weights.items()},
+    }
+    if write:
+        log_run(row, path=path)
+
+    print(f"[VOL-SHOCK live paper] panel {row['panel_date']}  gross={gross:.2f}  net={net:+.4f}  "
+          f"long={n_long} short={n_short}")
+    print("TOP 8 longs / TOP 8 shorts:")
+    for s, wt in book.weights.head(8).items():
+        print(f"  + {s:16s} {wt*100:6.2f}%")
+    for s, wt in book.weights.tail(8).items():
+        print(f"  - {s:16s} {wt*100:6.2f}%")
+    if book_ret is None:
+        print(f"live sleeve P&L: UNAVAILABLE (quotes ok {n_ok}/{n_req}; {err})")
+    else:
+        print(f"live sleeve intraday {book_ret*100:+.2f}% (dollar-neutral target ~0); "
+              f"quotes ok {n_ok}/{n_req}")
+    print(f"snapshot {'appended to '+path if write else 'NOT written (dry run)'}")
+    return row
+
+
 def _last_row(path: str) -> dict | None:
     """The last JSON row of a ledger (the pairs harness's state), or None if absent/empty."""
     p = Path(path)
@@ -711,12 +780,14 @@ def forward_track(path: str = SNAPSHOT_PATH, cost_bps: float = 20.0,
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Live paper snapshot for a deployable/forward book")
-    p.add_argument("--sleeve", choices=("regime", "ls", "trend", "gl", "dualrot", "divcarry"),
+    p.add_argument("--sleeve",
+                   choices=("regime", "ls", "trend", "gl", "dualrot", "divcarry", "volshock"),
                    default="regime",
                    help="regime = RL-07-10 long-only book; ls = RL-07-12 F&O-shortable L/S; "
                         "trend = RL-07-17 5-ETF trend sleeve; gl = RL-07-16 gold_lowbeta variant; "
                         "dualrot = RL-07-26-01 5-ETF dual-momentum rotation; "
-                        "divcarry = RL-07-26-13 dividend-yield decile L/S")
+                        "divcarry = RL-07-26-13 dividend-yield decile L/S; "
+                        "volshock = RL-07-26-15 turnover-shock decile L/S")
     p.add_argument("--start", default="2010-01-01")
     p.add_argument("--index", default="nifty500")
     p.add_argument("--refresh", action="store_true",
@@ -730,7 +801,8 @@ def main() -> None:
     a = p.parse_args()
     paths = {"regime": SNAPSHOT_PATH, "ls": LS_SNAPSHOT_PATH,
              "trend": TREND_SNAPSHOT_PATH, "gl": GL_SNAPSHOT_PATH,
-             "dualrot": DUALROT_SNAPSHOT_PATH, "divcarry": DIVCARRY_SNAPSHOT_PATH}
+             "dualrot": DUALROT_SNAPSHOT_PATH, "divcarry": DIVCARRY_SNAPSHOT_PATH,
+             "volshock": VOLSHOCK_SNAPSHOT_PATH}
     path = a.path or paths[a.sleeve]
     if a.forward:
         forward_track(path=path, cost_bps=a.cost_bps, refresh=a.refresh)
@@ -744,6 +816,8 @@ def main() -> None:
         run_gl(refresh=a.refresh, path=path, write=write)
     elif a.sleeve == "divcarry":
         run_divcarry(start=a.start, index=a.index, refresh=a.refresh, path=path, write=write)
+    elif a.sleeve == "volshock":
+        run_volshock(start=a.start, index=a.index, refresh=a.refresh, path=path, write=write)
     else:
         runner = run_ls if a.sleeve == "ls" else run
         runner(start=a.start, index=a.index, refresh=a.refresh, path=path, write=write)

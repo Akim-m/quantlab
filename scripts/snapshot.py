@@ -62,6 +62,7 @@ step("gold_lowbeta variant snapshot", lambda: live_paper.run_gl(refresh=False))
 step("DUAL-ROT sleeve snapshot", lambda: live_paper.run_dualrot(refresh=False))
 step("DIV-CARRY sleeve snapshot", lambda: live_paper.run_divcarry(refresh=False))
 step("PAIRS sleeve snapshot", lambda: live_paper.run_pairs(refresh=False))
+step("VOL-SHOCK sleeve snapshot", lambda: live_paper.run_volshock(refresh=False))
 step("F&O daily collect", fno_collect.collect)
 step("NSE ban-list collect", nse_events.collect_ban_list)
 step("NSE index-changes collect", nse_events.collect_index_changes)
@@ -84,3 +85,5 @@ step("DIV-CARRY forward record",
      lambda: live_paper.forward_track(path=live_paper.DIVCARRY_SNAPSHOT_PATH))
 step("PAIRS forward record",
      lambda: live_paper.forward_track(path=live_paper.PAIRS_SNAPSHOT_PATH))
+step("VOL-SHOCK forward record",
+     lambda: live_paper.forward_track(path=live_paper.VOLSHOCK_SNAPSHOT_PATH))

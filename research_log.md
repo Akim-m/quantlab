@@ -2032,6 +2032,18 @@ dividends.
   UNBLOCKED (and -14's volume-confirmed variant (b) with it); the strategy itself
   remains registered-not-built.
 - **Conclusion:** QC passed; pending build + forward evidence (252-day read).
+- **Result (go-live 2026-07-10, `volshock.py`):** construction built + wired into the
+  daily snapshot; 10 dedicated tests + full suite 366 green. Shock = log(5d/126d mean
+  rupee turnover), signal-day zero/missing-volume mask (0/277 excluded at the current
+  read — coverage clean, consistent with the QC), ±3 MAD winsorize, weights lagged one
+  day, ME-held decile L/S. Orchestrator independently recomputed TRENT.NS's shock from
+  raw volume×close (+0.620 → long decile, matches) and verified the book (gross 1.0000,
+  net +0e+00, 27L/27S). First forward row (panel 2026-07-09): live intraday −0.02% ≈ 0,
+  quotes 54/54, ledger `experiments/paper_trades_volshock.jsonl`. Disclosed:
+  min_periods=1 rolling means (a historical gap doesn't black a name out 126 sessions);
+  panel's ≤3-day volume ffill inherited.
+- **Final conclusion (go-live):** live and accruing (FORWARD-ONLY). Read at ≥252 forward
+  days: net spread t>1.5 inside the equity-forward BH-FDR family.
 
 ## RL-2026-07-26-16 - F&O eligibility-change events (SSF-LIST)
 
