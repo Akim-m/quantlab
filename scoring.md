@@ -55,6 +55,9 @@ purely-local 200MA gate (SR 0.768, z −0.551). Cross-market index timing retire
 | **PAIRS-RV** (frozen top-10 same-sector cointegration) | -09 | formation: 59/701 pass, top-10 frozen (spot-verified β/ADF/σ) | 0/10 open (all \|z\|<2), all cash | ≥252d: book SR>0 + convergence t>1.5 |
 | **DIV-CARRY** (dividend-yield decile L/S, non-price signal) | -13 | extraction verified (ITC/COALINDIA/ONGC textbook dividends) | 27L/27S dollar-neutral, intraday −0.07% | 252 fwd days, spread t>1.5 |
 | **VOL-SHOCK** (turnover-shock decile L/S) | -15 | volume QC PASS (0.0% dev, 20/20); TRENT shock hand-verified | 27L/27S dollar-neutral, intraday −0.02% | 252 fwd days, spread t>1.5 |
+| **MACRO-BETA** (USDINR+Brent alignment L/S) | -08 | n/a (forward-only; TCS betas 4dp-verified vs independent impl) | 27L/27S dollar-neutral, intraday −0.40% | 252 fwd days, spread t>1.5 |
+| **ILLIQ** (Amihud illiquidity decile L/S) | -19 | TRAIN 2010-16 net SR **1.305**@40bps, L63 frozen (survivorship-inflated design read; long leg ~5th liq pctile) | 27L/27S dollar-neutral, intraday +0.34% | 252 fwd days, spread t>1.5 |
+| **DELIV** (delivery-% conviction decile L/S) | -20 | TRAIN 2011-16 net SR **0.914** t 2.38 @20bps, LEVEL frozen (SHOCK/SIGNED negative → design graveyard); new non-price source, QC 0.000000% vs bhavcopy | 27L/27S dollar-neutral, intraday −0.72% | 252 fwd days, spread t>1.5 |
 
 ### 2c. Data collectors LIVE (event/signal clocks started 2026-07-10)
 
@@ -72,7 +75,6 @@ purely-local 200MA gate (SR 0.768, z −0.551). Cross-market index timing retire
 |---|---|---|
 | Crowded-short basis filter (L/S short leg) | -04 | Observational; reads at 126/252 collection days |
 | Futures basis-momentum x-sec | -05 | Forward-only; needs ≥63 formation days of collector data |
-| USDINR+Brent macro-beta x-sec | -08 | Needs `INR=X`/`BZ=F` cache confirmation before go-live |
 | Futures OI positioning x-sec | -10 | Blocked: per-name futures OI not yet collected (Groww probe pending) |
 | Basis-dispersion L/S conditioning | -12 | Observational; reads at 126/252 days |
 | Expiry-cycle settlement structure | -18 | Observational; measured off collector expiry dates at the read |
@@ -89,6 +91,9 @@ purely-local 200MA gate (SR 0.768, z −0.551). Cross-market index timing retire
 | DIV-CARRY | `paper_trades_divcarry.jsonl` | 1 | day one |
 | PAIRS-RV | `paper_trades_pairs.jsonl` | 1 | day one (all cash, correctly) |
 | VOL-SHOCK | `paper_trades_volshock.jsonl` | 1 | day one |
+| MACRO-BETA | `paper_trades_macrobeta.jsonl` | 1 | day one |
+| ILLIQ | `paper_trades_illiq.jsonl` | 1 | day one |
+| DELIV | `paper_trades_deliv.jsonl` | 1 | day one (+ MTO archive collector) |
 | Short straddle (RL-18) | `paper_options.jsonl` | 2 | cum P&L **−403** (left tail, honestly recorded) |
 | VRP-gated straddle | `paper_options_vrp.jsonl` | 1 | flat (gate OFF, warm-up) |
 | PUT-W | `paper_options_putw.jsonl` | 1 | short 23700 PE opened |

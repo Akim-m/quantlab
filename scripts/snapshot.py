@@ -31,8 +31,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
-from quantlab import (event_studies, fno_collect, intraday_collect, live_paper,
-                      nse_events, paper_options, paper_options_putw, paper_options_vrp)
+from quantlab import (deliv, event_studies, fno_collect, intraday_collect, live_paper,
+                      nse_events, nse_mto, paper_options, paper_options_putw,
+                      paper_options_vrp)
 
 refresh = "--no-refresh" not in sys.argv[1:]
 
@@ -63,6 +64,10 @@ step("DUAL-ROT sleeve snapshot", lambda: live_paper.run_dualrot(refresh=False))
 step("DIV-CARRY sleeve snapshot", lambda: live_paper.run_divcarry(refresh=False))
 step("PAIRS sleeve snapshot", lambda: live_paper.run_pairs(refresh=False))
 step("VOL-SHOCK sleeve snapshot", lambda: live_paper.run_volshock(refresh=False))
+step("MACRO-BETA sleeve snapshot", lambda: live_paper.run_macrobeta(refresh=False))
+step("ILLIQ sleeve snapshot", lambda: live_paper.run_illiq(refresh=False))
+step("MTO delivery collect", nse_mto.collect_mto_today)
+step("DELIV sleeve snapshot", lambda: deliv.run_deliv(refresh=False))
 step("F&O daily collect", fno_collect.collect)
 step("NSE ban-list collect", nse_events.collect_ban_list)
 step("NSE index-changes collect", nse_events.collect_index_changes)
@@ -87,3 +92,9 @@ step("PAIRS forward record",
      lambda: live_paper.forward_track(path=live_paper.PAIRS_SNAPSHOT_PATH))
 step("VOL-SHOCK forward record",
      lambda: live_paper.forward_track(path=live_paper.VOLSHOCK_SNAPSHOT_PATH))
+step("MACRO-BETA forward record",
+     lambda: live_paper.forward_track(path=live_paper.MACROBETA_SNAPSHOT_PATH))
+step("ILLIQ forward record",
+     lambda: live_paper.forward_track(path=live_paper.ILLIQ_SNAPSHOT_PATH))
+step("DELIV forward record",
+     lambda: live_paper.forward_track(path=deliv.DELIV_SNAPSHOT_PATH))

@@ -2,6 +2,41 @@
 
 Running log of research + build state. Newest first.
 
+## 2026-07-10 (later) — wave 4: backtest-anchored additions (RL-26-08/-19/-20)
+
+- Owner asked "are you backtesting on the available data too? work on more
+  strategies" → answer: yes, everything promotable was (TRAIN design → one locked
+  2017+ read), but the hold-out is exhausted (~92 trials), so wave 4 takes the
+  DUAL-ROT route: TRAIN design reads on available data + forward-only live books,
+  ZERO new hold-out spends. Owner also set a global hard rule this session (never
+  work on an unverified assumption; verify through implementation) → OPUS.md §1.
+- Probes BEFORE registration: `INR=X`/`BZ=F` clean+deep → -08 unblocked; NSE legacy
+  MTO delivery archive serves ≥2011 (modern bhavcopy only ~2020+) → new non-price
+  source for -20. Pre-registered -19/-20 + wave header, committed before any run.
+- METHOD: Fable orchestrator + 3 parallel Opus executors; orchestrator pre-computed
+  independent reference numbers BEFORE executor reports (RELIANCE illiq chain, 4
+  names' macro-betas via separate lstsq impl, hand-parsed 2013 MTO line), then
+  verified every decision number. All three verified exact.
+- DONE: **-08 MACRO-BETA LIVE** (forward-only) — bivariate 252d OLS on lagged
+  USDINR/Brent returns; TCS betas match independent impl to 4dp; causality test
+  proven load-bearing; corr vs VOL-SHOCK +0.086. First row 27L/27S, −0.40%.
+- DONE: **-19 ILLIQ LIVE** — TRAIN 2010-16 froze L63 (net SR 1.305@40bps vs 1.239;
+  long leg ~5th liquidity pctile flagged; survivorship-inflated design read, NOT
+  the claim). SPLPETRO chain exact vs raw-CSV re-derivation; corr vs VOL-SHOCK
+  −0.245. First row 27L/27S, +0.34%.
+- DONE: **-20 DELIV LIVE** — 1,522 MTO files backfilled (0 errors; 2017-2025
+  hold-out never downloaded, physically absent); QC 0.000000% vs modern bhavcopy;
+  TRAIN 2011-16 froze LEVEL (0.914, t 2.38 @20bps); SHOCK + SIGNED-SHOCK are
+  design-stage NEGATIVES (recorded, count as trials). ABBOTINDIA chain exact to
+  6dp via independent parser; corr vs ILLIQ −0.214 (registered confound absent).
+  First row 27L/27S, −0.72%.
+- Snapshot now runs 11 sleeve legs + MTO collector; suite 413 green (366 + 47 new).
+- Lesson worth keeping (executor catch): volshock's dense-ffill weight grid would
+  make a BACKTEST trade daily — backtesting sleeves must use the ME-sparse grid
+  (h52 pattern). Forward-only sleeves unaffected.
+- Family tally: hold-out still ~92 (zero new reads); +5 TRAIN design trials logged
+  (-19 ×2, -20 ×3).
+
 ## 2026-07-10 — owner-directed autonomous new-strategy wave (RL-2026-07-26 family)
 
 - SETUP: daily snapshot run for 2026-07-10 (REGIME leg recovered after a transient
