@@ -1641,8 +1641,22 @@ equity-forward {-08, -09}; events {-11}.
   the asset is the premium). **BUILD NEXT.**
 
 <!-- filled in at the locked read -->
-- **Result:** (filled when the harness leg lands / at the locked read.)
-- **Conclusion:** pending forward evidence.
+- **Result (go-live 2026-07-10, `paper_options_vrp.py`):** harness LIVE + wired into the
+  daily snapshot; 10 dedicated tests + full suite 276 green. Reuses RL-18's option
+  arithmetic (bit-consistent). Gate = VRP_t (ATM_IV − RV5d) > median(≤126 prior non-null
+  VRP), strictly greater; today's VRP is structurally excluded from its own median window
+  (no look-ahead — tested with prior [1,2], today 100 → median 1.5). Warm-up: 0 prior → gate
+  defaults OFF (don't short vol with no evidence the premium beats its own median). DAILY
+  gate (can flatten mid-week) per the "synchronized daily marks" bar idiom. Data gap → carry
+  a held position, flat stays flat. Own ledger `experiments/paper_options_vrp.jsonl`
+  (SEPARATE file — co-mingling into `paper_options.jsonl` would corrupt RL-18's `_last_row`
+  state; matches the per-book convention of the other four sleeves; `book="vrp_gated_
+  straddle"` tag on every row). First row 2026-07-10: VRP −8.29 (ATM_IV 10.01 − RV5d 18.30),
+  gate OFF (warmup, n_hist=0), flat.
+- **Conclusion:** live and accruing (FORWARD-ONLY, zero hold-out). First read ≥252 forward
+  days jointly with RL-18/-03 under BH-FDR: LW Sharpe-difference z of gated-vs-ungated
+  synchronized daily marks. Note: the median needs ~126 collection days, so the gate is in
+  warm-up (OFF on negative-VRP days) until ~2027-01.
 
 ## RL-2026-07-26-07 - NIFTY IV term-structure slope as a short-vol stress gate
 

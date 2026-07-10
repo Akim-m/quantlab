@@ -31,7 +31,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
-from quantlab import fno_collect, intraday_collect, live_paper, paper_options
+from quantlab import fno_collect, intraday_collect, live_paper, paper_options, paper_options_vrp
 
 refresh = "--no-refresh" not in sys.argv[1:]
 
@@ -63,6 +63,7 @@ step("F&O daily collect", fno_collect.collect)
 step("Intraday 5m archive", intraday_collect.collect)
 step("Archive commit + push", archive_push)
 step("PAPER options mark", paper_options.snapshot)
+step("VRP-gated options mark", paper_options_vrp.snapshot)
 step("REGIME forward record", lambda: live_paper.forward_track())
 step("F&O L/S forward record",
      lambda: live_paper.forward_track(path=live_paper.LS_SNAPSHOT_PATH))
