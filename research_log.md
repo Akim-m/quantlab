@@ -1396,6 +1396,179 @@ explicitly.
 
 ---
 
+## RL-2026-07-26 wave - new-strategy slate (5 pre-registrations, 2026-07-10)
+
+Owner-directed autonomous research round. Five economically-grounded candidates
+spanning long- and short-term. **MTC honesty:** only **-02** spends a hold-out
+read (+4 variants → family tally ~92); **-01/-03/-04/-05 consume ZERO test-window
+uses** (forward-only / observational). All five are registered here BEFORE any run.
+Idea-selection was cross-checked against a full graveyard/data/MTC audit; two seed
+ideas were rejected with receipts (overnight drift = cost-dead and already a logged
+negative as anomaly factor 17; single-stock TSMOM = graveyard-equivalent, ≳0.8
+return-corr with the deployed REGIME book).
+
+## RL-2026-07-26-01 - ETF dual-momentum defensive rotation (DUAL-ROT)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** Relative momentum across five economically distinct
+  asset-class sleeves (large-cap equity, next-50, banks, gold-INR, Nasdaq-INR)
+  plus an absolute-momentum gate to cash (Antonacci 2014 dual momentum;
+  Moskowitz-Ooi-Pedersen 2012 TSMOM). Concentrating in the strongest 1-2 of the
+  five distinct return streams should earn more per unit risk than holding ALL
+  up-trending sleeves at inverse-vol (the promoted RL-17 trend sleeve), because
+  cross-asset relative strength persists at 3-12m while the absolute gate keeps
+  crash protection. Gold/Nasdaq legs enter only via relative strength — no
+  stress-bid timing thesis (that died in RL-16).
+- **Sample (locked):** universe = NIFTYBEES/JUNIORBEES/BANKBEES/GOLDBEES/MON100
+  (Yahoo adj_close). TRAIN 2010-01-01→2016-12-31 for DESIGN FREEZE ONLY (MON100
+  from 2011-03; that month ineligible, disclosed). **No test-window read.** Forward
+  clock from registration; first read ≥252 forward trading days (~2027-07), then
+  quarterly, alongside RL-22. rebalance = monthly (ME), prior-day signals. cost =
+  20 bps (10/40 sens).
+- **Preprocessing (locked):** `xasset_trend.clean_prices` spike guard (mandatory,
+  RL-17 lesson); no winsorization.
+- **Specification:** top-K ∈ {1,2} × absolute gate ∈ {12-1 tsmom sign, px>200d MA}.
+  Selected sleeves equal-weight (K=2 → 50/50); a selected sleeve failing its
+  absolute gate holds cash. ONE variant frozen on TRAIN combined Sharpe. Maps to
+  `trend.dual_momentum` + `xasset_trend` primitives.
+- **Predicted outcome:** frozen-variant TRAIN Sharpe ~0.8-1.1; forward pass prior
+  ~35-40%. Concentration cuts the diversification that made RL-17 work; a
+  statistical TIE with the trend sleeve is the modal outcome. Bar (head-to-head
+  risk-adjusted idiom): at first read, Ledoit-Wolf Sharpe-difference z vs
+  `paper_trades_trend.jsonl` > 1 AND forward maxDD not worse by >2 pts AND
+  corr(REGIME ledger) < 0.5. Pass → replacement/augmentation registration; fail →
+  retired, trend sleeve keeps the slot. **Classification: FORWARD-ONLY** (new
+  snapshot leg + `paper_trades_dualrot.jsonl`).
+
+<!-- filled in when the forward leg goes live / at first locked read -->
+- **Result:** (go-live status filled when the paper-track leg lands.)
+- **Conclusion:** pending forward evidence.
+
+## RL-2026-07-26-02 - US-close trend spillover gate on NIFTYBEES (US-GATE)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** US equity returns lead non-US markets at weekly-monthly
+  horizons and not vice versa (Rapach-Strauss-Zhou 2013, JF — gradual diffusion of
+  information from the world's price-setting market). India's deployed gate is
+  purely local (200MA/VIX); a US-trend gate carries information local prices have
+  not fully impounded, especially at global risk transitions (2018Q4, 2020-02,
+  2022). `^GSPC` has never been used as a signal in this lab — a genuinely new
+  input series.
+- **Causality clock (locked):** at India close day t (15:30 IST) the latest
+  COMPLETE US session is t−1 (US close 01:30/02:30 IST on calendar day t). The
+  close-t→close-t+1 position uses `^GSPC` through US day t−1 (shift one US trading
+  day, ffill onto the NSE calendar). ≥13h information buffer; close-to-close book
+  (no unadjusted-open problem).
+- **Sample (locked):** universe = NIFTYBEES.NS adj_close (spike guard). TRAIN
+  2010-01-01→2016-12-31, TEST 2017-01-01→run date. **ONE read.** rebalance = daily
+  decision, multi-day holds. cost = 10 bps/leg (ETF convention RL-20/23; 5/20 sens).
+- **Preprocessing (locked):** adj_close panel, spike guard, no winsorization;
+  holiday mismatches ffilled on the LAGGED signal only.
+- **Specification:** long NIFTYBEES when US signal ON else cash; signal ∈ {(a)
+  `^GSPC` 21d ret>0, (b) 63d ret>0, (c) px>200d MA, (d) a AND c}. ONE frozen on
+  TRAIN Sharpe; one test read. Disclosure arm (NO bearing on the verdict):
+  NIFTYBEES gated by the INDIA 200MA — shows whether US info adds over the local gate.
+- **Predicted outcome:** pass prior ~30%. The lab's index-timing-vs-B&H record is
+  bad (TOM t=1.13; band-MR LW z −2.34, *significantly worse* than B&H) and three
+  overlay studies say the local gate is hard to beat. Modal outcome: shallower
+  maxDD, Sharpe ≈ B&H, LW z<1 — a valid negative retiring cross-market timing. Bar
+  (timing idiom, RL-19/23 lesson): LW Sharpe-difference z vs B&H NIFTYBEES > 1 at
+  10 bps, surviving 20 bps, AND maxDD better than B&H; promotion only to a forward
+  paper-track and additionally requires reported corr(REGIME) < 0.8.
+  **Classification: TEST-WINDOW-RUN** — the family's single hold-out spend (+4
+  variants → tally ~92). Justified under the audit's 3-part rule: cross-market
+  crisis-transition gate needs the 2018/20/22 episodes (only in history), so a
+  forward track cannot evaluate it for years; new signal series; idiom-correct bar.
+
+<!-- filled in AFTER the run -->
+- **Result:** (run pending — `us_gate_study.py`; orchestrator to re-verify every
+  decision number by independent reconstruction before it enters the record.)
+- **Conclusion:** pending.
+
+## RL-2026-07-26-03 - NIFTY weekly cash-secured put-write paper book (PUT-W)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** harvest the index variance-risk premium as EQUITY
+  REPLACEMENT — systematically short a ~2%-OTM weekly NIFTY put, fully
+  cash-secured (CBOE PUT index; Ungar-Moran 2009). Distinct risk shape from
+  RL-18's delta-neutral straddle: long-delta with a premium cushion vs a pure vol
+  bet. Indian weekly index options are maximally liquid.
+- **Sample (locked):** NIFTY weekly chain from the RL-15 collector; strike nearest
+  0.98×spot, nearest expiry ≥2 DTE, hold to settlement / roll at DTE<2, 1 lot, no
+  leverage. **No backtest exists or will be claimed** (expired contracts
+  unresolvable — measured RL-15). First read at 126 collection days jointly with
+  RL-18 under BH-FDR across the options family; sizing only after ≥252 days.
+- **Preprocessing (locked):** marks at chain LTP (disclosed optimistic, RL-18
+  convention); daily rows to `paper_options.jsonl` under a new book tag.
+- **Specification:** exactly ONE variant (0.98 ratio, weekly, hold-to-expiry) —
+  zero search dimensions.
+- **Predicted outcome:** positive median week, negative skew; a 2020-style episode
+  sinks the read. Prior it beats NIFTYBEES risk-adjusted over year one ~45% —
+  observing the tail BEFORE sizing is the point. Bar (risk-adjusted vs the equity
+  it replaces): at ≥252 forward days, LW Sharpe-difference z vs synchronized
+  NIFTYBEES B&H > 1, worst-week + skew disclosed. Fail → retired; no interim
+  claims. **Classification: FORWARD-ONLY.**
+
+<!-- filled in when the harness lands / at the locked read -->
+- **Result:** (go-live status filled when the put-write harness leg lands.)
+- **Conclusion:** pending forward evidence.
+
+## RL-2026-07-26-04 - Crowded-short (basis) filter on the F&O L/S short leg
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** deep single-stock-futures backwardation marks
+  crowded/expensive-to-short names; crowded shorts are squeeze-prone, so their
+  forward returns are LESS negative than the momentum signal implies. Excluding
+  the deepest-backwardation decile from the short leg should cut short-leg tail
+  risk without losing spread. **Observational first — the DEPLOYED L/S book is NOT
+  touched** (protocol §5, no tweaking deployed models).
+- **Sample (locked):** RL-15 basis rows × the live L/S ledger
+  (`paper_trades_ls.jsonl`) — both lab-generated forward data. Read at 126 days
+  (power thin, disclosed) and 252 days (the real read).
+- **Preprocessing (locked):** stored annualized basis (4dp), daily cross-sectional
+  deciles; no other transforms.
+- **Specification:** ONE split — short-leg names in the bottom basis decile vs all
+  other shorts; forward 21d returns from entry.
+- **Predicted outcome:** prior ~35% the squeeze differential is material at 252
+  days. Bar (short-leg RISK-claim idiom): mean forward 21d return of
+  bottom-decile-basis shorts minus other shorts > 0 with t>1.5, worst-case
+  contribution disclosed. Pass → separate deployment registration for the filtered
+  sleeve; fail → retired. **Classification: FORWARD-ONLY** (observational;
+  consumes no hold-out).
+
+<!-- filled in at the locked reads -->
+- **Result:** (filled at 126/252-day reads.)
+- **Conclusion:** pending forward evidence.
+
+## RL-2026-07-26-05 - Futures basis-momentum cross-section (F&O H4)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** basis-momentum (front minus second-contract momentum)
+  predicts futures returns beyond basis and price momentum (Boons-Moreira da Prado
+  2019, commodities), proxying positioning pressure on the curve. In single-stock
+  futures, curve-slope shifts reflect short-demand/financing pressure. Long high /
+  short low basis-momentum across the 210 F&O names.
+- **Sample (locked):** RL-15 collector (cash/fut1/fut2 LTP daily since
+  2026-07-09) — forward-only by measurement. Registered now, BEFORE any usable
+  formation window exists. First read at the RL-15 126-day mark if ≥63 formation
+  days exist, else 252; joins RL-15's BH-FDR family (H1-H3 + this).
+- **Preprocessing (locked):** 21d basis-momentum; cross-sectional winsorization at
+  ±3 MAD; names missing fut2 excluded that day.
+- **Specification:** ONE variant — decile L/S, equal-weight, monthly; paper signal
+  portfolio only.
+- **Predicted outcome:** prior ~25% — equity-futures basis is mostly mechanical
+  (rate − dividend), leaving less curve signal than commodities; a null retires it
+  at near-zero cost. Bar (dollar-neutral return-spread idiom): net spread t>1.5
+  within the family BH-FDR; promotion only to a paper-track. cost = 20 bps (10/40);
+  ~2-5%/yr drag vs literature 5-10%/yr — margin thin, said plainly.
+  **Classification: FORWARD-ONLY.**
+
+<!-- filled in at the locked read -->
+- **Result:** (filled at the locked read.)
+- **Conclusion:** pending forward evidence.
+
+---
+
 ## Template
 
 ```markdown
