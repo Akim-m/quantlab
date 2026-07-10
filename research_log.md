@@ -1884,8 +1884,31 @@ dividends.
   file; b1 per name in fno_daily.jsonl. **BUILD NEXT.**
 
 <!-- filled in at go-live / the locked read -->
-- **Result:** (filled at go-live + the 252-day read.)
-- **Conclusion:** pending forward evidence.
+- **Result (go-live 2026-07-10, `divcarry.py`):** construction built + wired into the daily
+  snapshot; 11 dedicated tests + full suite 287 green. Extraction: f = adj_close/close is a
+  pure dividend factor (splits cancel); 1 − f[t−1]/f[t] recovers each distribution; noise
+  floor 5e-4 (measured non-event noise ~5e-7, 1000× margin); >5% steps zeroed as
+  non-dividend actions. Orchestrator independently re-extracted ITC.NS with separate code:
+  textbook dividends recovered (median 1.95% vs module 2.00%; Rs 6.25-8.00 interim+final
+  cadence; count differs only by history window). Validation names: COALINDIA ~2.0 ev/yr
+  1-4% (9 specials >5% correctly excluded), ITC ~1.33 ev/yr median 2.00%, ONGC ~2.6 ev/yr.
+  Book verified dollar-neutral: gross 1.0000, net +0e+00, 27 long / 27 short. Longs = the
+  predicted PSU-bank/energy/utility cohort (BANKINDIA, BANKBARODA, BPCL, CANBK, ITC, ...);
+  shorts = zero-payout names (SUZLON, IDEA, YESBANK, ...). First forward row (panel
+  2026-07-09): live intraday −0.07% ≈ 0, quotes 54/54, ledger
+  `experiments/paper_trades_divcarry.jsonl`. **Disclosure arm (honest):** Spearman(realized
+  trailing yield, −b1) = **−0.057, n=130 — indistinguishable from zero** (±0.17 2σ band).
+  Mechanical reason: near-expiry basis (~19 dte) prices IMPENDING dividends, largely
+  orthogonal to a trailing-252d yield (VEDL/BPCL/IOC yield 7-10% yet show contango, no
+  ex-date before expiry). Group means do lean the right way (top-30-yield b1 +0.026 vs
+  bottom-30 +0.044). The basis cross-check is a WEAK same-day validator; extraction
+  validity rests on the per-name event logs above. Caveats disclosed: live-book monthly
+  rebalance (ME-held, not daily churn); shorts NOT F&O-restricted (research signal, not an
+  implementable short book — an implementable variant would need the RL-12 intersection);
+  demerger-type events below 5% of price would pass the filter (none observed on the
+  validation names).
+- **Conclusion:** live and accruing (FORWARD-ONLY, zero hold-out). First read ≥252 forward
+  days: net spread t>1.5 inside the equity-forward BH-FDR family {-08, -09, -13}.
 
 ## RL-2026-07-26-14 - Jump + volume-confirmed news-proxy drift (JUMP-MOM)
 

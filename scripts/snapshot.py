@@ -59,6 +59,7 @@ step("F&O L/S sleeve snapshot", lambda: live_paper.run_ls(refresh=False))
 step("TREND sleeve snapshot", lambda: live_paper.run_trend(refresh=False))
 step("gold_lowbeta variant snapshot", lambda: live_paper.run_gl(refresh=False))
 step("DUAL-ROT sleeve snapshot", lambda: live_paper.run_dualrot(refresh=False))
+step("DIV-CARRY sleeve snapshot", lambda: live_paper.run_divcarry(refresh=False))
 step("F&O daily collect", fno_collect.collect)
 step("Intraday 5m archive", intraday_collect.collect)
 step("Archive commit + push", archive_push)
@@ -73,3 +74,5 @@ step("gold_lowbeta forward record",
      lambda: live_paper.forward_track(path=live_paper.GL_SNAPSHOT_PATH))
 step("DUAL-ROT forward record",
      lambda: live_paper.forward_track(path=live_paper.DUALROT_SNAPSHOT_PATH))
+step("DIV-CARRY forward record",
+     lambda: live_paper.forward_track(path=live_paper.DIVCARRY_SNAPSHOT_PATH))
