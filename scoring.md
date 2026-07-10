@@ -47,30 +47,35 @@ purely-local 200MA gate (SR 0.768, z −0.551). Cross-market index timing retire
 
 ### 2b. Built + LIVE, forward-only (no historical read by design)
 
-| Strategy | RL | Design evidence (TRAIN 2010-16) | First live row (2026-07-10) | First locked read |
+| Strategy | RL | Design evidence | First live row (2026-07-10) | First locked read |
 |---|---|---|---|---|
-| **DUAL-ROT** (5-ETF dual momentum, top-2 + tsmom gate) | -01 | TRAIN SR **0.693** (K2/tsmom, argmax of 4 — verified) | GOLDBEES 50% + MON100 50%, intraday +0.33% | ~2027-07 vs trend sleeve (LW z) |
-| **VRP-gate** (short straddle only when IV−RV fat) | -06 | n/a (options: no history exists) | VRP −8.29 → gate OFF (warm-up), flat | ~2027-01+ gated-vs-ungated (LW z) |
+| **DUAL-ROT** (5-ETF dual momentum, top-2 + tsmom gate) | -01 | TRAIN 2010-16 SR **0.693** (K2/tsmom, argmax of 4 — verified) | GOLDBEES 50% + MON100 50%, intraday +0.33% | ~2027-07 vs trend sleeve (LW z) |
+| **PUT-W** (weekly cash-secured 2%-OTM put-write) | -03 | n/a (options: no history exists) | short 23700 PE exp 07-14, credit 9.15×65 | 126d with RL-18 (BH-FDR); sizing ≥252d |
+| **VRP-gate** (short straddle only when IV−RV fat) | -06 | n/a | VRP −8.29 → gate OFF (warm-up), flat | ~2027-01+ gated-vs-ungated (LW z) |
+| **PAIRS-RV** (frozen top-10 same-sector cointegration) | -09 | formation: 59/701 pass, top-10 frozen (spot-verified β/ADF/σ) | 0/10 open (all \|z\|<2), all cash | ≥252d: book SR>0 + convergence t>1.5 |
 | **DIV-CARRY** (dividend-yield decile L/S, non-price signal) | -13 | extraction verified (ITC/COALINDIA/ONGC textbook dividends) | 27L/27S dollar-neutral, intraday −0.07% | 252 fwd days, spread t>1.5 |
+| **VOL-SHOCK** (turnover-shock decile L/S) | -15 | volume QC PASS (0.0% dev, 20/20); TRENT shock hand-verified | 27L/27S dollar-neutral, intraday −0.02% | 252 fwd days, spread t>1.5 |
 
-### 2c. Registered, awaiting build or data (no numbers yet — honest blanks)
+### 2c. Data collectors LIVE (event/signal clocks started 2026-07-10)
 
-| Strategy | RL | Class | Status |
-|---|---|---|---|
-| Weekly cash-secured put-write | -03 | Options/VRP | Registered, forward-only |
-| Crowded-short basis filter (L/S short leg) | -04 | F&O conditioning | Registered, observational |
-| Futures basis-momentum x-sec | -05 | F&O x-sec | Registered, forward-only |
-| IV term-structure slope gate | -07 | Options/vol | Blocked: needs far-expiry IV collection |
-| USDINR+Brent macro-beta x-sec | -08 | Macro x-sec | Registered; confirm `INR=X`/`BZ=F` cache |
-| Same-sector cointegration pairs | -09 | Relative value | Registered, forward-only |
-| Futures OI positioning x-sec | -10 | F&O x-sec | Blocked: needs per-name OI collection |
-| F&O ban-list (MWPL) crowding events | -11 | Event | Blocked: needs NSE ban-list feed |
-| Basis-dispersion L/S conditioning | -12 | F&O conditioning | Registered, observational |
-| Jump+volume news-proxy drift | -14 | Event | Registered, forward-only |
-| Turnover-shock x-sec | -15 | X-sec | Registered; needs volume QC |
-| F&O eligibility-change events | -16 | Event | Registered, forward-only |
-| Index-reconstitution flows | -17 | Event | Blocked: needs NSE Indices scrape |
-| Expiry-cycle settlement structure | -18 | Calendar/options | Registered, observational |
+| Collector | Unblocks | Day-one evidence |
+|---|---|---|
+| Far-monthly ATM IV + slope (`fno_collect`) | -07 IV term structure | near 9.49 / far 11.26, slope +1.77 (no inversion) |
+| NSE F&O ban list (`nse_events`) | -11 MWPL crowding | KAYNES banned (CSV archive; JSON API blocked, disclosed) |
+| Nifty50/Next50 membership archive (`nse_events`) | -17 recon flows (+ free PIT archive) | baselines 50+50 |
+| Jump events (`event_studies`) | -14 news-proxy drift | **DRREDDY −5.9%, z −3.45, vol-confirmed** |
+| SSF universe set-diff (`event_studies`) | -16 eligibility events | 210 underlyings, baseline |
+
+### 2d. Registered, still awaiting data or reads (honest blanks)
+
+| Strategy | RL | Status |
+|---|---|---|
+| Crowded-short basis filter (L/S short leg) | -04 | Observational; reads at 126/252 collection days |
+| Futures basis-momentum x-sec | -05 | Forward-only; needs ≥63 formation days of collector data |
+| USDINR+Brent macro-beta x-sec | -08 | Needs `INR=X`/`BZ=F` cache confirmation before go-live |
+| Futures OI positioning x-sec | -10 | Blocked: per-name futures OI not yet collected (Groww probe pending) |
+| Basis-dispersion L/S conditioning | -12 | Observational; reads at 126/252 days |
+| Expiry-cycle settlement structure | -18 | Observational; measured off collector expiry dates at the read |
 
 ## 3. Forward paper-track (the only clean out-of-sample evidence)
 
@@ -82,9 +87,13 @@ purely-local 200MA gate (SR 0.768, z −0.551). Cross-market index timing retire
 | gold_lowbeta variant | `paper_trades_gl.jsonl` | 2 | awaiting |
 | DUAL-ROT | `paper_trades_dualrot.jsonl` | 1 | day one |
 | DIV-CARRY | `paper_trades_divcarry.jsonl` | 1 | day one |
+| PAIRS-RV | `paper_trades_pairs.jsonl` | 1 | day one (all cash, correctly) |
+| VOL-SHOCK | `paper_trades_volshock.jsonl` | 1 | day one |
 | Short straddle (RL-18) | `paper_options.jsonl` | 2 | cum P&L **−403** (left tail, honestly recorded) |
 | VRP-gated straddle | `paper_options_vrp.jsonl` | 1 | flat (gate OFF, warm-up) |
-| F&O collector (RL-15) | `fno_daily.jsonl` | 2 | PCR 0.83→1.23, ATM IV 12.4→10.1 |
+| PUT-W | `paper_options_putw.jsonl` | 1 | short 23700 PE opened |
+| F&O collector (RL-15) | `fno_daily.jsonl` | 2 | PCR 0.83→1.23, ATM IV 12.4→10.1, IV slope +1.77 |
+| Event/NSE collectors | `event_*.jsonl`, `nse_*.jsonl` | 1 | DRREDDY jump; KAYNES ban; 50+50 baselines |
 
 ## 4. Graveyard — tested on historical data and retired (verdict numbers)
 
