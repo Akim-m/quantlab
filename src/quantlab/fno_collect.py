@@ -16,6 +16,11 @@ Collected daily:
     next-month futures LTP -> annualized basis b = (fut/cash - 1) * (365/dte).
   - NIFTY chain (nearest expiry): OI put-call ratio, ATM IV, and a fixed-moneyness
     skew = IV(put ~0.95*spot) - IV(call ~1.05*spot).
+  - NIFTY IV term structure (RL-2026-07-26-07): the next-MONTHLY expiry's ATM IV
+    (`atm_iv_far`) and the slope `iv_slope = atm_iv_far - atm_iv` (annualized IV pts,
+    same units as the near ATM IV). One extra chain fetch/day, inside the rate budget.
+    Forward-only and unrecoverable per missing day, so it is logged from now on. The
+    far-expiry selection rule is documented on `far_monthly_expiry`.
 """
 
 from __future__ import annotations
@@ -171,22 +176,84 @@ def chain_metrics(oc: dict) -> tuple[dict, str | None]:
     return out, None
 
 
+def _monthly_expiries(expiries: list[date]) -> list[date]:
+    """NSE lists several weekly expiries plus the monthlies; the monthly contract is
+    the LAST expiry within each calendar month (the weekly series' final expiry that
+    month). Return one monthly date per (year, month), sorted ascending."""
+    last: dict[tuple[int, int], date] = {}
+    for d in expiries:
+        key = (d.year, d.month)
+        if key not in last or d > last[key]:
+            last[key] = d
+    return sorted(last.values())
+
+
+def far_monthly_expiry(expiries: list[str], near: str) -> str | None:
+    """The 'far' leg of the IV term structure: the nearest MONTHLY expiry strictly
+    after the near (nearest not-yet-expired) expiry.
+
+    Selection rule: 'monthly' = the last listed expiry in a calendar month. Weeklies
+    are discriminated from monthlies purely by position-in-month, so a chain that
+    lists weekly + monthly expiries resolves to the correct next-monthly leg:
+      - near is a weekly earlier in its month -> far is that month's monthly;
+      - near is itself the month's monthly     -> far is next month's monthly.
+    Returns None when no monthly lies beyond `near` (e.g. only the near expiry is
+    listed) -> the caller records atm_iv_far=None with a note, never crashing."""
+    dates = sorted(d for d in (_parse_date(e) for e in expiries) if d is not None)
+    near_d = _parse_date(near)
+    if near_d is None:
+        return None
+    for d in _monthly_expiries(dates):
+        if d > near_d:
+            return d.isoformat()
+    return None
+
+
+def _empty_chain() -> dict:
+    return {"expiry": None, "spot": None, "pcr": None, "atm_iv": None, "skew": None,
+            "atm_strike": None, "n_strikes": 0,
+            "far_expiry": None, "atm_iv_far": None, "iv_slope": None}
+
+
 def nifty_chain_block(today: date) -> tuple[dict, bool, str | None]:
-    """Nearest not-yet-expired NIFTY expiry -> option-chain metrics. Never raises."""
+    """Near expiry (nearest not-yet-expired) -> PCR / ATM IV / skew, PLUS the far
+    (next-monthly) expiry's ATM IV and the term-structure slope. Never raises.
+
+    Failure isolation: the far leg has its own guard, so a far-chain fetch that fails
+    (or a chain with no readable far ATM IV, or no monthly beyond the near expiry)
+    degrades to atm_iv_far=None / iv_slope=None with an appended note - the near-leg
+    metrics and `chain_ok` are computed from the near leg alone and stay intact."""
     try:
         exp = gc.call("get_expiries", exchange="NSE", underlying_symbol=NIFTY).get("expiries", [])
-        future = sorted(e for e in exp if str(e) >= today.isoformat())
+        future = sorted(str(e) for e in exp if str(e) >= today.isoformat())
         if not future:
-            return {"expiry": None, "spot": None, "pcr": None, "atm_iv": None,
-                    "skew": None, "atm_strike": None, "n_strikes": 0}, False, "no_future_expiry"
-        expiry = str(future[0])
+            return _empty_chain(), False, "no_future_expiry"
+        expiry = future[0]
         oc = gc.call("get_option_chain", exchange="NSE", underlying=NIFTY, expiry_date=expiry)
     except Exception as e:
-        return {"expiry": None, "spot": None, "pcr": None, "atm_iv": None,
-                "skew": None, "atm_strike": None, "n_strikes": 0}, False, f"{type(e).__name__}: {e}"
+        return _empty_chain(), False, f"{type(e).__name__}: {e}"
+
     m, note = chain_metrics(oc)
-    m["expiry"] = expiry
-    ok = note is None and m["pcr"] is not None
+    m.update({"expiry": expiry, "far_expiry": None, "atm_iv_far": None, "iv_slope": None})
+    ok = note is None and m["pcr"] is not None  # near-leg only, byte-compatible meaning
+
+    far, far_note = far_monthly_expiry(future, expiry), None
+    if far is None:
+        far_note = "no_far_monthly"
+    else:
+        m["far_expiry"] = far
+        try:
+            foc = gc.call("get_option_chain", exchange="NSE", underlying=NIFTY, expiry_date=far)
+            fm, fnote = chain_metrics(foc)
+            m["atm_iv_far"] = fm["atm_iv"]
+            if fm["atm_iv"] is None:
+                far_note = fnote or "far_atm_iv_missing"
+        except Exception as e:
+            far_note = f"far:{type(e).__name__}: {e}"
+    if m["atm_iv"] is not None and m["atm_iv_far"] is not None:
+        m["iv_slope"] = m["atm_iv_far"] - m["atm_iv"]
+
+    note = "; ".join(n for n in (note, far_note) if n) or None
     return m, ok, note
 
 
@@ -218,6 +285,8 @@ def collect(today: date | None = None, refresh: bool = False, write: bool = True
         "nifty_expiry": chain["expiry"], "nifty_spot": chain["spot"],
         "pcr": _round(chain["pcr"], 4), "atm_iv": _round(chain["atm_iv"], 4),
         "skew": _round(chain["skew"], 4), "atm_strike": chain["atm_strike"],
+        "far_expiry": chain["far_expiry"], "atm_iv_far": _round(chain["atm_iv_far"], 4),
+        "iv_slope": _round(chain["iv_slope"], 4),
         "note": "; ".join(notes) or "ok",
         "basis": {u: _round_entry(e) for u, e in basis.items()},
     }
@@ -241,6 +310,8 @@ def _print_summary(row: dict, path: str, write: bool) -> None:
           f"cash_ok={row['n_cash_ok']}  fut1_ok={row['n_fut1_ok']}  fut2_ok={row['n_fut2_ok']}")
     print(f"NIFTY chain: expiry={row['nifty_expiry']}  spot={row['nifty_spot']}  "
           f"PCR={row['pcr']}  ATM_IV={row['atm_iv']}  skew={row['skew']}  ok={row['chain_ok']}")
+    print(f"IV term: far_expiry={row['far_expiry']}  ATM_IV_far={row['atm_iv_far']}  "
+          f"slope={row['iv_slope']}")
     sample = list(row["basis"].items())[:3]
     if sample:
         print("basis sample (underlying: cash fut1 fut2 dte1 dte2 b1 b2):")

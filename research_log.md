@@ -1684,8 +1684,21 @@ equity-forward {-08, -09}; events {-11}.
   **BUILD NEXT — collector extension is time-urgent.**
 
 <!-- filled in at the locked read -->
-- **Result:** (filled once the collector logs far-expiry IV; then at the locked read.)
-- **Conclusion:** pending data + forward evidence.
+- **Result (collector extension LIVE, 2026-07-10):** `fno_collect.py` now logs the
+  NIFTY next-monthly-expiry ATM IV each day — strictly additive schema (`far_expiry`,
+  `atm_iv_far`, `iv_slope` = far − near in annualized IV pts; every old field
+  byte-compatible, `chain_ok` still near-leg-only). Far expiry = nearest monthly
+  strictly after the near expiry, monthly = last listed expiry in its calendar month;
+  one extra chain fetch/day; far-leg failure writes the near row intact with
+  `atm_iv_far=None`. 11 new tests + 8 existing fno tests green. Live validation
+  (orchestrator): near 2026-07-14 ATM_IV 9.49, **far 2026-07-28 ATM_IV_far 11.26,
+  slope +1.77** — far chain populated, monthly detection correct (weekly→monthly gap
+  14d), no inversion on day one. Note: today's ledger carries two rows (the pre-
+  extension morning row + this richer one); read-time last-per-date dedup applies.
+  **The -07 forward clock starts 2026-07-10**; days before today are unrecoverable
+  (disclosed at registration).
+- **Conclusion:** data flowing; strategy claims (i)/(ii) pending the ≥252-day read
+  (~2027-07) inside the options-family BH-FDR.
 
 ## RL-2026-07-26-08 - Macro-sensitivity alignment cross-section (USDINR + Brent betas)
 
