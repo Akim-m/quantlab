@@ -31,6 +31,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from . import dualrot
 from . import groww_client as gc
 from .backtest import backtest_weights
 from .blend import composite, fno_long_short, market_on, regime_on
@@ -54,6 +55,7 @@ SNAPSHOT_PATH = "experiments/paper_trades.jsonl"
 LS_SNAPSHOT_PATH = "experiments/paper_trades_ls.jsonl"
 TREND_SNAPSHOT_PATH = "experiments/paper_trades_trend.jsonl"
 GL_SNAPSHOT_PATH = "experiments/paper_trades_gl.jsonl"
+DUALROT_SNAPSHOT_PATH = "experiments/paper_trades_dualrot.jsonl"
 
 
 def to_groww(yahoo_sym: str) -> str:
@@ -333,6 +335,72 @@ def run_trend(refresh: bool = False, path: str = TREND_SNAPSHOT_PATH, write: boo
     return row
 
 
+def current_dualrot_book(refresh: bool = False) -> tuple[Book, dict[str, bool]]:
+    """Reconstruct the RL-2026-07-26-01 5-ETF dual-momentum rotation (frozen top-K / gate)
+    on the latest cleaned panel date. Returns its long-only target weights (top-K held at
+    1/K each, cash for selected-but-gated-out or unselected sleeves) and each ETF's
+    held/cash state (weight > 0 == it is in the top-K and its absolute gate is up)."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with np.errstate(all="ignore"):
+            px = etf_panel(refresh=refresh)
+            w_full = dualrot.latest_weights(px)
+
+    last = px.index[-1]
+    gates = {s: bool(w_full.get(s, 0.0) > 0) for s in ETFS}
+    w = w_full[w_full > 0].sort_values(ascending=False)
+
+    # Raw (unadjusted) close is the intraday baseline the raw Groww LTP compares to;
+    # the warm cache from etf_panel is reused (refresh=False here avoids a double pull).
+    raw = close_prices(load_yahoo_ohlcv(ETFS), field="close")[ETFS].reindex(px.index)
+    today = datetime.now(IST).date()
+    completed = raw[raw.index.map(lambda d: d.date() < today)]
+    prev_row = completed.iloc[-1] if len(completed) else raw.iloc[-1]
+
+    book = Book(weights=w, regime_on=bool(len(w) > 0), cash_frac=float(1.0 - w.sum()),
+                latest_date=last, prev_close=prev_row.reindex(w.index),
+                nsei_prev_close=float("nan"))
+    return book, gates
+
+
+def run_dualrot(refresh: bool = False, path: str = DUALROT_SNAPSHOT_PATH, write: bool = True) -> dict:
+    """Snapshot the RL-2026-07-26-01 dual-momentum rotation to its own ledger. Long-only,
+    weights sum to <=1 (cash for ungated/unselected legs); forward_track-compatible."""
+    book, gates = current_dualrot_book(refresh=refresh)
+    book_ret, live_ret, n_ok, n_req, err = live_book_pnl(book)
+
+    row = {
+        "hypothesis_ref": "RL-2026-07-26-01", "kind": "live_paper_dualrot_snapshot",
+        "asof_ist": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S"),
+        "panel_date": str(book.latest_date.date()), "universe": "NSE-ETF5",
+        "cash_frac": round(book.cash_frac, 4),
+        "book_intraday_ret": None if book_ret is None else round(book_ret, 6),
+        "n_names": int(len(book.weights)), "n_quotes_ok": n_ok,
+        "groww_ok": err is None and n_ok > 0, "note": err or "ok",
+        "gate_states": gates,
+        "asset_intraday": {s: round(r, 6) for s, r in live_ret.items()},
+        "top_k": dualrot.FROZEN_TOP_K, "abs_gate": dualrot.FROZEN_GATE,
+        "weights": {s: round(float(w), 6) for s, w in book.weights.items()},
+    }
+    if write:
+        log_run(row, path=path)
+
+    print(f"[DUAL-ROT live paper] panel {row['panel_date']}  held={len(book.weights)}/5  "
+          f"cash={book.cash_frac:.0%}  (K={dualrot.FROZEN_TOP_K} gate={dualrot.FROZEN_GATE})")
+    for s, wt in book.weights.items():
+        mv = live_ret.get(s)
+        mvs = "n/a" if mv is None else f"{mv*100:+.2f}%"
+        print(f"  {s:16s} {wt*100:6.2f}%  intraday {mvs}")
+    off = [s for s, on in gates.items() if not on]
+    print(f"cash (unselected or gated-out): {', '.join(off) if off else 'none'}")
+    if book_ret is None:
+        print(f"live sleeve P&L: UNAVAILABLE (quotes ok {n_ok}/{n_req}; {err})")
+    else:
+        print(f"live sleeve intraday {book_ret*100:+.2f}%; quotes ok {n_ok}/{n_req}")
+    print(f"snapshot {'appended to '+path if write else 'NOT written (dry run)'}")
+    return row
+
+
 def current_gl_book(refresh: bool = False) -> Book:
     """Reconstruct the RL-2026-07-16 gold_lowbeta risk-off VARIANT of the deployed book:
     the RL-16 base (top-decile conviction momentum scaled by the 200MA-or-VIX overlay)
@@ -485,9 +553,10 @@ def forward_track(path: str = SNAPSHOT_PATH, cost_bps: float = 20.0,
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Live paper snapshot for a deployable/forward book")
-    p.add_argument("--sleeve", choices=("regime", "ls", "trend", "gl"), default="regime",
+    p.add_argument("--sleeve", choices=("regime", "ls", "trend", "gl", "dualrot"), default="regime",
                    help="regime = RL-07-10 long-only book; ls = RL-07-12 F&O-shortable L/S; "
-                        "trend = RL-07-17 5-ETF trend sleeve; gl = RL-07-16 gold_lowbeta variant")
+                        "trend = RL-07-17 5-ETF trend sleeve; gl = RL-07-16 gold_lowbeta variant; "
+                        "dualrot = RL-07-26-01 5-ETF dual-momentum rotation")
     p.add_argument("--start", default="2010-01-01")
     p.add_argument("--index", default="nifty500")
     p.add_argument("--refresh", action="store_true",
@@ -500,7 +569,8 @@ def main() -> None:
                    help="turnover cost for the forward report (default 20)")
     a = p.parse_args()
     paths = {"regime": SNAPSHOT_PATH, "ls": LS_SNAPSHOT_PATH,
-             "trend": TREND_SNAPSHOT_PATH, "gl": GL_SNAPSHOT_PATH}
+             "trend": TREND_SNAPSHOT_PATH, "gl": GL_SNAPSHOT_PATH,
+             "dualrot": DUALROT_SNAPSHOT_PATH}
     path = a.path or paths[a.sleeve]
     if a.forward:
         forward_track(path=path, cost_bps=a.cost_bps, refresh=a.refresh)
@@ -508,6 +578,8 @@ def main() -> None:
     write = not a.dry_run
     if a.sleeve == "trend":
         run_trend(refresh=a.refresh, path=path, write=write)
+    elif a.sleeve == "dualrot":
+        run_dualrot(refresh=a.refresh, path=path, write=write)
     elif a.sleeve == "gl":
         run_gl(refresh=a.refresh, path=path, write=write)
     else:

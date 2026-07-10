@@ -1441,8 +1441,21 @@ return-corr with the deployed REGIME book).
   snapshot leg + `paper_trades_dualrot.jsonl`).
 
 <!-- filled in when the forward leg goes live / at first locked read -->
-- **Result:** (go-live status filled when the paper-track leg lands.)
-- **Conclusion:** pending forward evidence.
+- **Result (go-live 2026-07-10, `dualrot.py`):** construction built + wired into the
+  daily snapshot; 20 dedicated tests + full suite 266 green. Orchestrator independently
+  verified: the four TRAIN Sharpes reproduce EXACTLY — **K2/tsmom 0.693 (argmax)** over
+  K2/ma 0.669, K1/tsmom 0.583, K1/ma 0.476 — and the live book matches an
+  independent-from-primitives 12-1 momentum rank (MON100 +0.694, GOLDBEES +0.495 = the
+  top-2 positive; JUNIORBEES +0.019 not top-2; BANKBEES −0.027, NIFTYBEES −0.078 gated
+  out). Frozen: **top_k=2, gate=tsmom** (12-1 relative momentum for selection, 12-1 sign
+  as the absolute crash gate). First forward row (panel 2026-07-09): GOLDBEES 50% +
+  MON100 50%, cash 0%, live intraday +0.33% (quotes 2/2), ledger
+  `experiments/paper_trades_dualrot.jsonl`. Note: weights are lagged one trading day (no
+  look-ahead) — stricter than the RL-17 trend sleeve; freeze and live use the identical
+  lagged construction, so what is frozen equals what trades.
+- **Conclusion:** live and accruing (FORWARD-ONLY, zero hold-out use). First locked read
+  ≥252 forward trading days (~2027-07): Ledoit-Wolf Sharpe-difference z vs the RL-17 trend
+  ledger, maxDD-delta, corr(REGIME) — per the pre-registered head-to-head bar.
 
 ## RL-2026-07-26-02 - US-close trend spillover gate on NIFTYBEES (US-GATE)
 
