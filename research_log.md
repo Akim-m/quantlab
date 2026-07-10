@@ -1833,8 +1833,18 @@ equity-forward {-08, -09}; events {-11}.
   doesn't apply yet).
 
 <!-- filled in once the ban-list feed is wired / at the read -->
-- **Result:** (filled after the ban-list feed is confirmed + wired.)
-- **Conclusion:** pending data + forward evidence.
+- **Result (data collector LIVE, 2026-07-10):** `nse_events.collect_ban_list` wired as a
+  daily snapshot leg → `experiments/nse_ban_list.jsonl` (committed). Source probing
+  (honest): the nseindia.com JSON API is Akamai-blocked from this machine (403 warmup /
+  404 API); the authoritative working source is the CSV archive
+  `nsearchives.nseindia.com/content/fo/fo_secban.csv` (HTTP 200, header carries the
+  official trade date). Stdlib urllib + browser headers, matching the india.py
+  convention; JSON path kept as first-try with the failure recorded per row. Day-one
+  row: trade_date 2026-07-10, **n_banned=1 (KAYNES)**. 17 tests green (fixtures, no
+  live HTTP in tests). **The -11 event clock starts 2026-07-10**; earlier ban events
+  are unrecoverable (disclosed).
+- **Conclusion:** data flowing; event claims pending accrual (~30-80 events/yr expected)
+  and the registered t>2 bars at the read.
 
 ## RL-2026-07-26-12 - Basis-dispersion (limits-to-arbitrage) conditioning of the L/S sleeve
 
@@ -2045,8 +2055,19 @@ dividends.
   (return-chasing allocation vs mechanical-flow event) / -11 (event sibling).
 
 <!-- filled in once the scrape leg is wired + at the read -->
-- **Result:** (filled after the NSE-Indices scrape is wired + the read.)
-- **Conclusion:** pending data + forward evidence.
+- **Result (data collector LIVE, 2026-07-10):** `nse_events.collect_index_changes` wired
+  as a daily snapshot leg → `experiments/nse_index_changes.jsonl` (committed). Design:
+  fetch the official Nifty 50 / Next 50 constituent CSVs (nsearchives endpoint family
+  already used by this repo, HTTP 200) and set-diff vs the last stored membership — each
+  row stores the FULL sorted member set, so the committed ledger is a self-contained
+  forward point-in-time membership archive (serves the handoff paid-data wishlist #4 for
+  free, going forward). Error rows carry members=null and are skipped by the differ, so
+  a failed fetch never corrupts the next diff (tested). Day-one baselines: nifty50 n=50,
+  niftynext50 n=50. 17 tests green. Events are caught at the EFFECTIVE date;
+  announcement-date capture noted as a future upgrade (anticipation-window claim (i)
+  requires it — until then only claim (ii), post-effective reversal, is measurable).
+- **Conclusion:** archive accruing; the ~Feb/Aug 2027 reviews are the first observable
+  events; claims judged at the registered t>2 bars inside the events-family BH-FDR.
 
 ## RL-2026-07-26-18 - Expiry-cycle settlement structure (EXP-DAY)
 

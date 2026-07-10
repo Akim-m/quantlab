@@ -1,0 +1,1 @@
+{"timestamp": "2026-07-10T10:13:03Z", "git_commit": "00beaa9", "git_dirty": true, "hypothesis_ref": "RL-2026-07-26-11", "kind": "nse_ban_list", "asof_ist": "2026-07-10 15:43:03", "date": "2026-07-10", "trade_date": "2026-07-10", "symbols": ["KAYNES"], "n_banned": 1, "source": "csv_archive", "note": "json:HTTP 404"}
