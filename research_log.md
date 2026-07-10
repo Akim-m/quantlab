@@ -1827,6 +1827,185 @@ equity-forward {-08, -09}; events {-11}.
 
 ---
 
+## RL-2026-07-26 wave 3 - six more (2026-07-10)
+
+Third research wave. All FORWARD-ONLY or BLOCKED-PENDING-DATA — **zero test-window reads**
+(family tally stays ~92; none passes the 3-part hold-out rule, as expected). Six ideas
+rejected with receipts: trend-strength-scaled sleeve (RL-06-28-01 OOS death + RL-21
+de-lever), breadth/dispersion gate (4th gate study vs the RL-16/21/24+-02 wall),
+PCR-change momentum (RL-15 H2 owns the series), skew-change (RL-15 H3 duplicate), ETF
+NAV-gap MR (no iNAV feed), historical expiry read (declined hold-out spend). Highlight:
+**-13 is the lab's FIRST non-price cross-sectional signal** — dividend yield mined from
+the `close`-vs-`adj_close` gap already cached, self-validated against F&O basis-implied
+dividends.
+
+## RL-2026-07-26-13 - Dividend-carry cross-section from the adj-vs-unadj gap (DIV-CARRY)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** trailing cash-distribution yield — the lab's first NON-PRICE
+  cross-sectional dimension (every prior signal is a price/volume transform). Dividend
+  yield proxies payout discipline + carry (Fama-French yield spreads; Litzenberger-
+  Ramaswamy tax-clientele); high-yield India names (PSUs/energy/utilities) are
+  structurally distinct from the momentum book. Mined at zero collection cost: Yahoo keeps
+  `close` (unadjusted) and `adj_close` (dividend-adjusted) side by side, so each ex-div
+  event is a permanent step in the close/adj ratio → a per-name dividend history.
+- **Sample (locked):** N500-277 (adj_close + close, ret_clip 0.40, survivorship disclosed).
+  History = formation warm-up only (no historical performance read, the -08 convention).
+  Forward paper portfolio from registration; first read ≥252 forward days.
+- **Preprocessing (locked):** ex-div events from day-over-day changes in the close/adj
+  adjustment factor; trailing-252d dividend sum ÷ price = yield. **Any single event
+  implying a distribution >5% of price EXCLUDED as a non-dividend action** (demergers/
+  specials — receipts RELIANCE +8.7% Jio, ITC +3.7% Hotels). Yields winsorized ±3 MAD.
+- **Specification:** ONE variant + ONE disclosure arm — decile L/S on trailing yield,
+  equal-weight, monthly paper portfolio. Disclosure arm (validity, not a trial):
+  rank-corr of realized yield vs basis-implied dividend (−b1) for the 130 F&O∩N500 names
+  from `fno_daily.jsonl` — an internal cross-validation.
+- **Predicted outcome:** prior ~25-30% (yield-decile spread thin everywhere; 2022-24 PSU
+  run may not persist). Turnover ~5-15%/mo → ~0.25-0.7%/yr drag vs ~2-4%/yr gross spread —
+  survives 20/40 bps; the risk is INSIGNIFICANCE, not cost. Bar (L/S spread idiom): net
+  spread t>1.5 at 252 forward days, inside the equity-forward BH-FDR family {-08,-09,-13}.
+  **Classification: FORWARD-ONLY.** Nearest: graveyard 32-factor family (all price
+  transforms — this is a cash-flow quantity) / -08 (same new-input pattern, but payouts vs
+  macro betas, no estimated-beta noise). Data CONFIRMED: close+adj_close in every cached
+  file; b1 per name in fno_daily.jsonl. **BUILD NEXT.**
+
+<!-- filled in at go-live / the locked read -->
+- **Result:** (filled at go-live + the 252-day read.)
+- **Conclusion:** pending forward evidence.
+
+## RL-2026-07-26-14 - Jump + volume-confirmed news-proxy drift (JUMP-MOM)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** the lab has no earnings dates (PEAD blocked), but a price JUMP
+  with a VOLUME spike is a free news-event proxy; post-news drift (Chan 2003) predicts
+  continuation in the jump's direction at 1-3 months. Counter-evidence disclosed:
+  frog-in-the-pan (Da-Gurun-Warachka) says discrete info prices FAST — the sign is the
+  hypothesis under test, not assumed.
+- **Sample (locked):** N500-277; events from registration forward only; first read ≥252
+  days (jumps plentiful — several hundred/yr, best power on this slate).
+- **Preprocessing (locked):** event = daily |ret| ≥ 3× trailing-63d σ; abnormal return =
+  stock − NSE-industry EW basket (-11 convention); overlapping events per name deduped to
+  first (21d blackout).
+- **Specification:** 2 variants — (a) price-only events; (b) also require volume >95th
+  trailing-63d pct (needs the volume QC of -15). Forward 21d/63d abnormal returns split by
+  jump sign; observational (tradable form registered separately on a pass).
+- **Predicted outcome:** prior ~25% (sign ambiguity real; Indian retail lottery-chasing
+  could flip positive jumps to reversal). Bar (event idiom): mean 21d abnormal return t>2
+  per sign, BH-FDR in the equity-forward family. **Classification: FORWARD-ONLY.** Nearest:
+  graveyard short-term reversal (unconditional 5d, cost-dead — this is conditional,
+  monthly, event-based) / -11 (shared abnormal-return design; different event object).
+
+<!-- filled in at the locked read -->
+- **Result:** (filled at the 252-day read.)
+- **Conclusion:** pending forward evidence.
+
+## RL-2026-07-26-15 - Turnover-shock (visibility premium) cross-section (VOL-SHOCK)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** abnormally high volume raises visibility and subsequent returns
+  (Gervais-Kaniel-Mingelgrin 2001, attention channel; Amihud-adjacent). Volume as a
+  cross-sectional LEVEL signal is untouched here (used only as a time-series trend gate).
+- **Sample (locked):** N500-277; rupee turnover = volume × close. Forward paper portfolio;
+  first read ≥252 days.
+- **Preprocessing (locked):** shock = (5d mean turnover)/(126d mean), log, winsorized ±3
+  MAD; zero/missing-volume names excluded.
+- **Specification:** ONE variant — decile L/S (long high-shock), equal-weight, monthly.
+- **Predicted outcome:** prior ~25% (attention decays fast; monthly transplant of a weekly
+  result dilutes). Turnover ~40-70%/mo → 1-2%/yr drag vs ~3-6%/yr gross — margin thin.
+  Bar: net spread t>1.5 at 252 days, equity-forward BH-FDR. **Classification: FORWARD-ONLY,
+  conditional on a pre-flight VOLUME QC** (Yahoo `.NS` volume unverified — cross-validate
+  ~20 names × recent dates vs Groww daily-candle volume, read-only; QC fail → BLOCKED
+  PENDING DATA). Nearest: graveyard factor-32 volume_momentum (time-series gate vs x-sec
+  level) / -10 (positioning quantity — futures OI vs cash volume; -10 blocked, this needs
+  nothing new if QC passes).
+
+<!-- filled in after the volume QC + at the read -->
+- **Result:** (filled after volume QC + the 252-day read.)
+- **Conclusion:** pending QC + forward evidence.
+
+## RL-2026-07-26-16 - F&O eligibility-change events (SSF-LIST)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** when NSE ADDS a stock to F&O, single-name shorting becomes
+  possible for the first time — Miller (1977) divergence-of-opinion says binding short
+  constraints inflate prices, so constraint RELEASE predicts negative drift (Chang-Cheng-Yu
+  2007, JF: HK short-list adds fall ~−1% to −5%); deletions re-impose it (opposite sign).
+  India-specific, structural, outside the price-transform space. Free detection: the
+  collector's daily basis-dict keys ARE the F&O underlying set (archived since 2026-07-09)
+  → adds/deletes are a one-line set-diff.
+- **Sample (locked):** names entering/leaving the collector's underlying set from go-live;
+  forward-only (historical F&O-list changes not archived anywhere in the lab).
+- **Preprocessing (locked):** abnormal return vs NSE-industry EW basket (-11 convention);
+  batch adds on one review date treated as ONE clustered event (cross-sectional dependence
+  disclosed).
+- **Specification:** ONE variant — event = first appearance/disappearance; forward 21d/63d
+  abnormal returns, adds vs deletes separate.
+- **Predicted outcome:** prior ~20-25% (set-diff catches the EFFECTIVE date not the earlier
+  announcement → attenuation; batch clustering cuts effective n). Bar (event idiom): mean
+  21d abnormal return t>2 (adds negative primary), BH-FDR in the events family {-11,-16,-17}.
+  **Classification: FORWARD-ONLY** (zero new collection; an announcement-date circular
+  scrape is an optional BLOCKED-PENDING-DATA upgrade). Nearest: -11 (temporary OI-limit ban
+  vs permanent eligibility change) / graveyard none. Complements RL-12's no-PIT-F&O-list
+  limitation by starting that archive. Data CONFIRMED: underlying set implicit in
+  fno_daily.jsonl.
+
+<!-- filled in at the locked read -->
+- **Result:** (filled at the read.)
+- **Conclusion:** pending forward evidence.
+
+## RL-2026-07-26-17 - Index-reconstitution flow events, Nifty 50 / Next 50 (RECON)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** semi-annual index reviews force mechanical passive flows at the
+  effective date (Harris-Gurel 1986; Shleifer 1986). US add-premia have decayed to ~0
+  (Greenwood-Sammon, disclosed) — but India's passive AUM (EPFO/index funds) is young and
+  growing, so the price-pressure channel is plausibly still live. New event data; nothing
+  in the lab touches membership changes.
+- **Sample (locked):** adds/deletes announced for Nifty 50 + Next 50 from go-live (NSE
+  Indices releases; ~Feb/Aug announce, Mar/Sep effective); ~10-30 events/yr — thin yr 1.
+- **Preprocessing (locked):** abnormal return vs industry EW basket; adds/deletes separate;
+  anticipation (announce→effective) + post-effective 21d reversal windows locked.
+- **Specification:** 2 claims — (i) anticipation drift (adds outperform announce→effective,
+  t>2); (ii) post-effective reversal (t>2) — the two-phase flow signature.
+- **Predicted outcome:** prior ~30% (mechanically grounded but US decay precedent + thin n).
+  Bar (event idiom): per-claim t>2 inside the events family BH-FDR. **Classification:
+  BLOCKED PENDING DATA — confirm source** (NSE Indices press-release scrape leg; free, no
+  Groww; collected forward so no PIT history needed). Serves handoff wishlist #4 (starts a
+  free forward point-in-time membership archive). Nearest: graveyard sector rotation
+  (return-chasing allocation vs mechanical-flow event) / -11 (event sibling).
+
+<!-- filled in once the scrape leg is wired + at the read -->
+- **Result:** (filled after the NSE-Indices scrape is wired + the read.)
+- **Conclusion:** pending data + forward evidence.
+
+## RL-2026-07-26-18 - Expiry-cycle settlement structure (EXP-DAY)
+
+- **Date (pre-registration):** 2026-07-10
+- **Economic hypothesis:** derivative settlement forces flow into the cash close on expiry
+  days (closing-VWAP settlement; delta/gamma unwinds) — documented Indian expiry-day
+  volume/vol effects (Vipul 2005-era). Distinct from turn-of-month (settlement mechanics,
+  not month-boundary flows).
+- **Sample (locked):** NIFTY daily (^NSEI/NIFTYBEES) + `nifty_expiry` from the collector +
+  the RL-18/-03 options ledgers; forward from registration (~50 weekly + 12 monthly
+  expiries/yr).
+- **Preprocessing (locked):** expiry days from the collector's logged expiry dates;
+  realized-vol baseline = trailing 63d.
+- **Specification:** 2 claims — (i) expiry-day realized vol > non-expiry (two-sample t>2);
+  (ii) decomposition of the short-vol paper books' daily marks by day-in-cycle (measurement
+  only; informs a SEPARATELY registered roll-timing rule — RL-18/-03 NOT touched, §5).
+- **Predicted outcome:** prior ~25% (ToM t=1.13 argues thin; value is mostly decision
+  support for the options program). Bar: claim (i) t>2; (ii) descriptive, both inside the
+  options-family BH-FDR. **Classification: FORWARD-ONLY.** Nearest: graveyard turn-of-month
+  (SIP/month-boundary vs derivative-settlement mechanics; observational) / -06/-07 (they
+  gate the short-vol book on vol-state; this measures cycle-time structure). Data CONFIRMED:
+  nifty_expiry logged daily.
+
+<!-- filled in at the locked read -->
+- **Result:** (filled at the read.)
+- **Conclusion:** pending forward evidence.
+
+---
+
 ## Template
 
 ```markdown
