@@ -36,6 +36,17 @@ Running log of research + build state. Newest first.
   (h52 pattern). Forward-only sleeves unaffected.
 - Family tally: hold-out still ~92 (zero new reads); +5 TRAIN design trials logged
   (-19 ×2, -20 ×3).
+- ADDENDUM (same day, owner direction "a system that reuses the right strategy for
+  the current market"): **RL-2026-07-26-21 META-ALLOC LIVE** — regime-conditional
+  book-of-books over the 10 cash sleeves using the deployed `regime_on` gate
+  verbatim (zero new estimation), vs a frozen STATIC 50/50 baseline, forward-only
+  (no joint sleeve history exists — 7 sleeves born today). Day one: risk_off → 60%
+  neutral + 40% cash. Bar: forward Sharpe-diff LW z>1 + DD cap at ≥252d; prior
+  ~20-25% (the overlay wall). Suite 422. Also answered the owner's 50%/yr ask with
+  leverage arithmetic on the real REGIME curve (1.5× ≈ 51% CAGR historical but
+  −40% maxDD, Sharpe FALLS, loses money 4 of 10 years — leverage is preference,
+  not alpha; nothing registered from it). Yahoo fundamentals API probed: 401 —
+  quality/fundamentals x-sec stays data-blocked (paid wishlist).
 
 ## 2026-07-10 — owner-directed autonomous new-strategy wave (RL-2026-07-26 family)
 

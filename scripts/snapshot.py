@@ -32,8 +32,8 @@ os.chdir(ROOT)
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
 from quantlab import (deliv, event_studies, fno_collect, intraday_collect, live_paper,
-                      nse_events, nse_mto, paper_options, paper_options_putw,
-                      paper_options_vrp)
+                      meta_alloc, nse_events, nse_mto, paper_options,
+                      paper_options_putw, paper_options_vrp)
 
 refresh = "--no-refresh" not in sys.argv[1:]
 
@@ -68,6 +68,7 @@ step("MACRO-BETA sleeve snapshot", lambda: live_paper.run_macrobeta(refresh=Fals
 step("ILLIQ sleeve snapshot", lambda: live_paper.run_illiq(refresh=False))
 step("MTO delivery collect", nse_mto.collect_mto_today)
 step("DELIV sleeve snapshot", lambda: deliv.run_deliv(refresh=False))
+step("META-ALLOC snapshot", lambda: meta_alloc.snapshot(refresh=False))
 step("F&O daily collect", fno_collect.collect)
 step("NSE ban-list collect", nse_events.collect_ban_list)
 step("NSE index-changes collect", nse_events.collect_index_changes)
@@ -98,3 +99,4 @@ step("ILLIQ forward record",
      lambda: live_paper.forward_track(path=live_paper.ILLIQ_SNAPSHOT_PATH))
 step("DELIV forward record",
      lambda: live_paper.forward_track(path=deliv.DELIV_SNAPSHOT_PATH))
+step("META-ALLOC forward record", meta_alloc.forward_record)

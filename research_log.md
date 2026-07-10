@@ -2358,8 +2358,19 @@ already owns hedged MR).
   inverse-vol blend eval already accruing — a second baseline available at the read).
 
 <!-- filled at go-live + the locked read -->
-- **Result:** (go-live pending.)
-- **Conclusion:** pending.
+- **Result (go-live 2026-07-10, `meta_alloc.py`):** built and wired as two snapshot legs
+  (daily state+maps row; forward record). 9 tests green (suite 422), including the
+  load-bearing causal-join test: a map flip on day D provably cannot touch day-D's
+  return (the join takes the latest row STRICTLY before the return day). Frozen maps
+  pinned by a regression test against tuning. First row (panel 2026-07-09): state
+  **risk_off** → META = 60% neutral pool (8.57% × 7 sleeves) + 40% cash, zero
+  directional — vs STATIC's constant 16.7%×3 + 7.1%×7. Day-one forward quirk recorded
+  honestly: only REGIME has ≥2 forward days yet, so META (which holds no REGIME in
+  risk-off) shows 0.0000% while STATIC shows +0.02% — coverage grows as the young
+  sleeves accrue their second day. Ledger `experiments/meta_alloc.jsonl`.
+- **Conclusion:** live and accruing (FORWARD-ONLY). Read at ≥252 forward days:
+  Sharpe(META) − Sharpe(STATIC) LW z > 1 AND maxDD(META) ≤ maxDD(STATIC) + 2 pts.
+  Modal expectation stays the honest one: META ≈ STATIC (the RL-16/21/24 overlay wall).
 
 ---
 

@@ -94,6 +94,7 @@ purely-local 200MA gate (SR 0.768, z −0.551). Cross-market index timing retire
 | MACRO-BETA | `paper_trades_macrobeta.jsonl` | 1 | day one |
 | ILLIQ | `paper_trades_illiq.jsonl` | 1 | day one |
 | DELIV | `paper_trades_deliv.jsonl` | 1 | day one (+ MTO archive collector) |
+| META-ALLOC (book-of-books) | `meta_alloc.jsonl` | 1 | day one — risk_off: 60% neutral pool + 40% cash, vs frozen STATIC baseline |
 | Short straddle (RL-18) | `paper_options.jsonl` | 2 | cum P&L **−403** (left tail, honestly recorded) |
 | VRP-gated straddle | `paper_options_vrp.jsonl` | 1 | flat (gate OFF, warm-up) |
 | PUT-W | `paper_options_putw.jsonl` | 1 | short 23700 PE opened |
