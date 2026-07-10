@@ -2222,8 +2222,36 @@ already owns hedged MR).
   transforms only, no volume x-sec).
 
 <!-- filled at the TRAIN freeze + go-live + the locked read -->
-- **Result:** (TRAIN freeze pending.)
-- **Conclusion:** pending.
+- **Result (TRAIN freeze + go-live 2026-07-10, `illiq.py`):** TRAIN 2010-01-04→2016-12-30
+  (n=1709 daily returns; truncation PHYSICAL — panels sliced before any weight/return;
+  test-asserted). Design table (net Sharpe @40/20/80 bps | ann | maxDD | 1-sided mo.
+  turnover): **L63 1.305/1.375/1.165 | +10.6% | −17.7% | 11.2%**; L252
+  1.239/1.282/1.152 | +10.1% | −16.0% | 7.5%. **FROZEN = L63** (registered argmax
+  @40bps; margin +0.066 — thin, but the freeze rule is mechanical and was locked
+  first). Cost-realism disclosure: long-leg median rupee-turnover percentile ≈ 5%,
+  i.e. the long book lives in the least-liquid twentieth — 40 bps is the honest
+  headline arm and even it may understate; the TRAIN Sharpe is additionally
+  survivorship-inflated (registered as acute). Turnover 7-11%/mo confirms
+  cost-death is not the modal risk. Orchestrator verification: TRAIN table
+  reproduced to the digit on re-run; SPLPETRO.NS daily chain re-derived from the
+  raw CSV independently — |ret| 0.017952, turnover 5.4253e6, daily illiq
+  3.308965e-9 EXACT match (63d-mean differs benignly by window composition:
+  panel-calendar vs own-row rolling on a name trading 7.5k sh/day); RELIANCE.NS
+  −28.36 deep in the liquid tail, consistent with mega-caps clipping at the −3 MAD
+  floor. Implementation catch worth recording: the volshock dense-ffill weight
+  pattern would have made the BACKTEST rebalance daily — the study uses the h52
+  ME-sparse grid instead (volshock itself unaffected: forward-only, no backtest
+  path). First forward row (panel 2026-07-09): 27L/27S, gross 1.0, net 0, quotes
+  54/54, intraday +0.34%; longs led by SPLPETRO/EIHOTEL/DCMSHRIRAM, shorts =
+  mega-caps (BHARTIARTL, HDFCBANK, ICICIBANK). **Registered disclosure:**
+  Spearman(ILLIQ, -15 VOL-SHOCK) = **−0.245, n=277** — negative as mechanics
+  predict (a turnover surge deflates measured illiquidity); distinct books. Ledger
+  `experiments/paper_trades_illiq.jsonl`; 6 design rows in `experiments/log.jsonl`;
+  14 tests.
+- **Conclusion:** frozen L63, live and accruing (TRAIN-design + FORWARD-ONLY; zero
+  hold-out spend). First read ≥252 forward days: net spread t>1.5 inside the
+  equity-forward BH-FDR family — the TRAIN 1.3 Sharpe is design evidence only and
+  is NOT the claim.
 
 ## RL-2026-07-26-20 - Delivery-percentage conviction cross-section (DELIV)
 
