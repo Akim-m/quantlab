@@ -31,8 +31,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
-from quantlab import (fno_collect, intraday_collect, live_paper, nse_events,
-                      paper_options, paper_options_putw, paper_options_vrp)
+from quantlab import (event_studies, fno_collect, intraday_collect, live_paper,
+                      nse_events, paper_options, paper_options_putw, paper_options_vrp)
 
 refresh = "--no-refresh" not in sys.argv[1:]
 
@@ -64,6 +64,7 @@ step("DIV-CARRY sleeve snapshot", lambda: live_paper.run_divcarry(refresh=False)
 step("F&O daily collect", fno_collect.collect)
 step("NSE ban-list collect", nse_events.collect_ban_list)
 step("NSE index-changes collect", nse_events.collect_index_changes)
+step("Event studies (jumps + SSF-list + maturity)", event_studies.run_all)
 step("Intraday 5m archive", intraday_collect.collect)
 step("Archive commit + push", archive_push)
 step("PAPER options mark", paper_options.snapshot)

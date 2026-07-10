@@ -1969,8 +1969,19 @@ dividends.
   monthly, event-based) / -11 (shared abnormal-return design; different event object).
 
 <!-- filled in at the locked read -->
-- **Result:** (filled at the 252-day read.)
-- **Conclusion:** pending forward evidence.
+- **Result (collector LIVE, 2026-07-10, `event_studies.py`):** jump detector + 21d
+  maturity measurement wired as a snapshot leg; 12 tests green (3σ boundary pinned,
+  σ strictly pre-event — a leak would flip the constructed test verdict, blackout
+  suppress/re-arm, peer basket excludes self). Day-one scan (latest completed session
+  2026-07-09, 277 names): **1 event — DRREDDY.NS ret −5.89%, z −3.45, DOWN,
+  vol_confirmed=True**. DISCLOSED: the first scan covers session 2026-07-09, one
+  session before this registration's date; the event is kept (the hypothesis was not
+  formed by looking at it) and the 252-day read will report with and without it.
+  Winsorized (ret_clip 0.40) panel used for detection — attenuates only the >40%
+  tail, disclosed. Abnormal returns measure vs the NSE-industry EW peer basket
+  excluding the event stock; idempotent by (event_date, symbol).
+- **Conclusion:** collecting; expect several hundred events/yr; claims at the
+  252-day read (t>2 per sign, BH-FDR in the equity-forward family).
 
 ## RL-2026-07-26-15 - Turnover-shock (visibility premium) cross-section (VOL-SHOCK)
 
@@ -2030,8 +2041,16 @@ dividends.
   fno_daily.jsonl.
 
 <!-- filled in at the locked read -->
-- **Result:** (filled at the read.)
-- **Conclusion:** pending forward evidence.
+- **Result (collector LIVE, 2026-07-10, `event_studies.py`):** SSF eligibility-change
+  detector wired as a snapshot leg (runs after the F&O collect): set-diffs the per-name
+  basis keys of the last two `fno_daily.jsonl` rows (~210 underlyings). Day-one:
+  universe 210, no change (baseline established). Events keyed by the collector's
+  snapshot date; batch adds/deletes share one event_date (clustered inference, as
+  registered). 21d abnormal-return maturity measurement shared with -14 (peer basket
+  excludes self; SSF names resolve bare→.NS; names outside the 277-panel stay pending —
+  disclosed gap). Same 12-test suite.
+- **Conclusion:** collecting; NSE F&O list revisions are episodic (reviews + ad-hoc);
+  claims at the registered t>2 bar inside the events-family BH-FDR.
 
 ## RL-2026-07-26-17 - Index-reconstitution flow events, Nifty 50 / Next 50 (RECON)
 
