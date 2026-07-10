@@ -1748,7 +1748,27 @@ equity-forward {-08, -09}; events {-11}.
   COVID, 2022-03 Ukraine, 2026-03/04 — genuine moves, NOT vendor spikes; the
   `clean_prices` transient-spike guard applies at load per the RL-17 convention).
   **UNBLOCKED → build proceeding.** No fallback to `CL=F` needed.
-- **Conclusion:** pending go-live + forward evidence.
+- **Result (go-live 2026-07-10, `macrobeta.py`):** construction built per the locked spec;
+  14 dedicated tests green. Implementation decisions (disclosed): betas from ONE
+  bivariate 252d rolling OLS per name (intercept + β_INR + β_oil, closed-form
+  rolling-covariance algebra, min_periods=252 → full-window-only estimates); macro
+  series `clean_prices`-guarded on their native calendar, THEN reindexed to the panel
+  with ffill(limit=5); trend path carries two causal lags (63d trend sign reads levels
+  through t−1, weights lag a further day); β_INR/β_oil winsorized ±3 MAD independently
+  per date. Orchestrator verification: repro command reproduces the report EXACTLY;
+  TCS.NS raw betas from the module (+0.45008/−0.04540) match an independently-written
+  lstsq implementation on a different calendar alignment (+0.4501/−0.0454) to 4dp;
+  causality test proven load-bearing (bar-T macro injection: byte-identical ≤T with
+  the lag, moves bar-T without it). First forward row (panel 2026-07-09): 27L/27S,
+  gross 1.0, net 0, quotes 54/54, intraday −0.40%. Macro state: USDINR 63d trend +1
+  (weakening), Brent 63d trend −1 → longs = INR-weakness winners + oil-fall winners
+  (#1 KPRMILL β_INR +0.704 — textile exporter, economically sane); shorts led by
+  SONATSOFTW (noisy negative β_INR on an IT name — the registered estimation-noise
+  risk, visible from day one and disclosed). **Registered disclosure:** Spearman
+  (alignment, -15 turnover-shock) = +0.086, n=277 — a distinct bet from the existing
+  volume sleeve. Ledger `experiments/paper_trades_macrobeta.jsonl`.
+- **Conclusion:** live and accruing (FORWARD-ONLY). First read ≥252 forward days: net
+  spread t>1.5 inside the equity-forward BH-FDR family.
 
 ## RL-2026-07-26-09 - Same-sector F&O cointegration pairs (relative value)
 
