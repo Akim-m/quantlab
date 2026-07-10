@@ -1542,8 +1542,21 @@ return-corr with the deployed REGIME book).
   claims. **Classification: FORWARD-ONLY.**
 
 <!-- filled in when the harness lands / at the locked read -->
-- **Result:** (go-live status filled when the put-write harness leg lands.)
-- **Conclusion:** pending forward evidence.
+- **Result (go-live 2026-07-10, `paper_options_putw.py`):** harness LIVE + wired into the
+  daily snapshot; 9 dedicated tests + RL-18's 9 regression tests green. Follows the
+  RL-26-06 pattern (own module + own ledger `experiments/paper_options_putw.jsonl`,
+  reusing paper_options helpers — only the put payoff is new arithmetic, pinned by a
+  hand-computed ITM settle test: credit 100, strike 24000, settle 23800 → (100−200)×lot).
+  Rules as registered: strike nearest 0.98×spot from the listed chain, nearest weekly
+  ≥2 DTE, hold to European cash settlement or roll at DTE<2, marks at PE LTP (disclosed
+  optimistic). Schema mirrors RL-18 + strike_ratio/otm_pct/cash_secured_notional; the
+  `atm_iv` key holds the HELD-STRIKE IV (~2% OTM), not true ATM — schema-mirroring
+  choice, documented. First position 2026-07-10: SHORT 23700 PE exp 2026-07-14
+  (strike_ratio 0.9791, OTM 2.09%), credit 9.15 × lot 65, cash-secured 1,540,500;
+  day-one mark 9.15, P&L 0.
+- **Conclusion:** live and accruing (FORWARD-ONLY). First read at 126 collection days
+  jointly with RL-18 under the options-family BH-FDR; sizing decisions only after ≥252
+  days, LW Sharpe-diff z vs synchronized NIFTYBEES B&H per the registered bar.
 
 ## RL-2026-07-26-04 - Crowded-short (basis) filter on the F&O L/S short leg
 
