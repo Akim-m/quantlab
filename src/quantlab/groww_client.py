@@ -8,8 +8,9 @@ the process environment and never logged, printed, or returned. The access token
 is held in memory only.
 
 Rate limit: Groww allows 10 req/s for live data (300/min) and 20 req/s for
-non-trading (500/min). We self-throttle to 7 req/s and 280/min - comfortably
-under every ceiling - via a token-bucket limiter shared by all callers.
+non-trading (500/min). We self-throttle to 6 req/s (owner directive 2026-07-11:
+stay 4 req/s below the documented ceiling) and 280/min, via a token-bucket
+limiter shared by all callers.
 """
 
 from collections import deque
@@ -40,7 +41,7 @@ def load_env(path: str | Path = ".env") -> None:
 class RateLimiter:
     """Thread-safe token bucket: at most `per_sec`/s and `per_min`/min calls."""
 
-    def __init__(self, per_sec: int = 7, per_min: int = 280):
+    def __init__(self, per_sec: int = 6, per_min: int = 280):
         self.per_sec = per_sec
         self.per_min = per_min
         self._calls: deque[float] = deque()

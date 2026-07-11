@@ -22,22 +22,30 @@ and `research_log.md` before proposing or running anything.
 
 ## Data sources
 
-- **Backtest prices: Yahoo `adj_close`** via `data.load_yahoo_ohlcv` (total return —
-  corporate-action + dividend adjusted; deep history to ~1996 for large caps).
-  Cached under `data/raw/yahoo/` (git-ignored). Indian single stocks use the `.NS`
-  suffix; NSE index membership via `india.nse_index_symbols("nifty500"|...)`.
-- **Groww trade API: DATA ONLY, read-only** (`groww_client.py`). Used for the
+- **US / long-history backtest prices: Yahoo `adj_close`** via `data.load_yahoo_ohlcv`
+  (total return — corporate-action + dividend adjusted; deep history to ~1996 for
+  large caps). Cached under `data/raw/yahoo/` (git-ignored). Indian single stocks
+  use the `.NS` suffix; NSE index membership via `india.nse_index_symbols("nifty500"|...)`.
+- **Indian market backtests: Groww backtesting API** (owner directive 2026-07-11):
+  `get_historical_candles` / `get_expiries` / `get_contracts` — NSE+BSE, CASH+FNO
+  (OHLC, volume, OI for derivatives). History from **2020 only**; per-request window
+  caps (1–5 min: 30 d, 10–30 min: 90 d, 1 h+/daily: 180 d) — chunk multi-year fetches.
+  Dividend/corp-action adjustment of this endpoint is **UNVERIFIED**: before the first
+  equity total-return study on it, compare vs Yahoo `adj_close` on a high-yield name
+  (e.g. COALINDIA.NS) across an ex-date. If unadjusted, use it for F&O and
+  short-horizon work and keep Yahoo for long-horizon total-return.
+- **Groww trade API: DATA ONLY, read-only** (`groww_client.py`). Also the
   authoritative NSE instrument master (`get_all_instruments`), F&O-shortability flags,
-  live LTP/quotes, and recent-price validation. NOT the backtest price source — Groww
+  live LTP/quotes, and recent-price validation. Its plain historical-data endpoint's
   daily history (measured 2026-07-09: back to ~2002-07, split/bonus-adjusted) is
   **NOT dividend- or demerger-adjusted** — returns from it are wrong on high-yield
-  and demerged names. Intraday candles: trailing ~90 days only.
+  and demerged names. Intraday candles there: trailing ~90 days only.
   - **NEVER place/modify/cancel an order.** `groww_client.call()` refuses order
     methods; do not bypass it. There is no trading path in this repo, by design.
   - **Secrets:** `API_KEY`/`API_SECRET` live in `.env` (git-ignored). Never print,
     log, commit, or hardcode them. `load_env()` reads them into the process env only.
-  - **Rate limit:** self-throttle to ≤7 req/s (Groww allows 10/s live, 20/s
-    non-trading). The shared `RATE` token-bucket enforces it.
+  - **Rate limit:** self-throttle to ≤6 req/s — 4 below Groww's 10/s live-data
+    ceiling (non-trading allows 20/s). The shared `RATE` token-bucket enforces it.
 
 ## Environment & checks
 
